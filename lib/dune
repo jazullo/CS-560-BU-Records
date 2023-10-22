@@ -1,2 +1,3 @@
 (library
- (name brml))
+ (name brml)
+ (libraries batteries))
