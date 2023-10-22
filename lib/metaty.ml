@@ -6,12 +6,13 @@ module Dict = Map.Make(String)
 
 module rec S : sig
 
+  (* internal representation of types *)
   type t = _t uref
   and _t = 
-    | MVar of int
+    | MVar of int   (* polymorphic type variables *)
     | MLit of mlit
     | MFun of t * t
-    | TRec of recty
+    | TRec of recty  (* polymorphic records *)
 
   and mlit = MInt | MBool
 
@@ -19,12 +20,12 @@ module rec S : sig
 
 end = S
 
-and Free : sig
+and Free : sig  (* Boolean unifier for free boolean rings *)
   type boolean = boolean_ ref
   and boolean_ = 
     | BExpr of boolean list list
     | BVar of int
-    | BConst of (bool * S.t Dict.t)
+    | BConst of (bool * S.t Dict.t)  (* FBRs implemented as dicts *)
   
   type ubool = boolean list list uref
 
