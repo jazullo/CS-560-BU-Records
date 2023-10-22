@@ -1,0 +1,3 @@
+def f u v = 
+  let r = u | v in
+  r.w + r.x + r.y + r.z
