@@ -42,7 +42,23 @@ end = Make(struct
   let zero = false, Dict.empty
   let one = true, Dict.empty
 
-  let and_const = failwith "todo"  (* implement in terms of (=?) *)
+  (* important helpers *)
+  let usnd _ c1 c2 = 
+    Unify.(=?) c1 c2;
+    c2
+  let liftA2 f o1 o2 = match o1, o2 with
+    | Some x1, Some x2 -> Some (f x1 x2)
+    | None, _ | _, None -> None
+  let[@warning "-32"] inter r = Dict.merge (fun s -> liftA2 (usnd s)) r
+  let[@warning "-32"] union r = Dict.union (fun s r1 r2 -> Some (usnd s r1 r2)) r
+  
+  (* let diff r1 r2 = Dict.filter (fun s c2 -> Dict.find_opt s r2
+    |> Option.default_delayed (fun () -> )) r1 *)
+
+  (* let and_const (m1, r1) (m2 r2) = match m1, m2 with
+    | false, false -> false, Dict.merge (fun _ _ c -> c) r1 r2
+    | true, true -> true, Dict.union (fun _ _ c -> c) r1 r2 *)
+  let and_const = failwith "todo"
   let xor_const = failwith "todo"  (* "" *)
 
   let to_string = failwith "todo"  (* convert to DNF and print *)
