@@ -32,7 +32,11 @@ and Free : sig  (* Boolean unifier for free boolean rings *)
   val unify : ubool -> ubool -> unit
   val bfresh : unit -> ubool
 end = Make(struct
-  type t = bool * S.t Dict.t  (* true flips dict to top, empty fields are treated as variables *)
+(* bool=false ==> 
+     S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
+   bool=true ==> 
+     Dict is complemented (the tags of the record are _all other strings_ ) *)
+  type t = bool * S.t Dict.t
 
   let zero = false, Dict.empty
   let one = true, Dict.empty
@@ -40,7 +44,7 @@ end = Make(struct
   let and_const = failwith "todo"  (* implement in terms of (=?) *)
   let xor_const = failwith "todo"  (* "" *)
 
-  let to_string = failwith "todo"  (* convert to DNF! *)
+  let to_string = failwith "todo"  (* convert to DNF and print *)
 end)
 
 and Unify : sig
