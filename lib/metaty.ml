@@ -4,6 +4,8 @@ open Ubool
 
 module Dict = Map.Make(String)
 
+type mode = Fin | Inv  (* finite or inverted *)
+
 module rec S : sig
 
   (* internal representation of types *)
@@ -25,7 +27,7 @@ and Free : sig  (* Boolean unifier for free boolean rings *)
   and boolean_ = 
     | BExpr of boolean list list
     | BVar of int
-    | BConst of (bool * S.t Dict.t)  (* FBRs implemented as dicts *)
+    | BConst of (mode * S.t Dict.t)  (* FBRs implemented as dicts *)
   
   type ubool = boolean list list uref
 
@@ -33,33 +35,38 @@ and Free : sig  (* Boolean unifier for free boolean rings *)
   val bfresh : unit -> ubool
 end = Make(struct
   (* Infinite Free Boolean Rings *)
-(* bool=false ==> 
-     S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
-   bool=true ==> 
-     Dict is complemented (the tags of the record are _all other strings_ ) *)
-  type t = bool * S.t Dict.t
+(* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
+   Inv: Dict is complemented (the tags of the record are _all other strings_ ) *)
+  type t = mode * S.t Dict.t
 
-  let zero = false, Dict.empty
-  let one = true, Dict.empty
+  let zero = Fin, Dict.empty
+  let one  = Inv, Dict.empty
 
   (* important helpers *)
-  let usnd _ c1 c2 = 
+  let usnd c1 c2 = 
     Unify.(=?) c1 c2;
     c2
   let liftA2 f o1 o2 = match o1, o2 with
     | Some x1, Some x2 -> Some (f x1 x2)
     | None, _ | _, None -> None
-  let[@warning "-32"] inter r = Dict.merge (fun s -> liftA2 (usnd s)) r
-  let[@warning "-32"] union r = Dict.union (fun s r1 r2 -> Some (usnd s r1 r2)) r
-  
-  (* let diff r1 r2 = Dict.filter (fun s c2 -> Dict.find_opt s r2
-    |> Option.default_delayed (fun () -> )) r1 *)
+  let inter r = Dict.merge (fun _ -> liftA2 usnd) r
+  let union r = Dict.union (fun _ r1 r2 -> Some (usnd r1 r2)) r
+  let diff r1 r2 = Dict.filter (fun s _ -> not @@ Dict.mem s r2) r1
+  let symdiff r = Dict.merge begin fun _ r1 r2 -> match r1, r2 with
+    | Some _ as r3, None | None, (Some _ as r3) -> r3
+    | Some _, Some _ | None, None -> None
+  end r
 
-  (* let and_const (m1, r1) (m2 r2) = match m1, m2 with
-    | false, false -> false, Dict.merge (fun _ _ c -> c) r1 r2
-    | true, true -> true, Dict.union (fun _ _ c -> c) r1 r2 *)
-  let and_const = failwith "todo"
-  let xor_const = failwith "todo"  (* "" *)
+  let and_const (m1, r1) (m2, r2) = match m1, m2 with
+    | Fin, Fin -> Fin, inter r1 r2
+    | Inv, Inv -> Inv, union r1 r2
+    | Fin, Inv -> Fin, diff  r1 r2
+    | Inv, Fin -> Inv, diff  r2 r1
+  let xor_const (m1, r1) (m2, r2) = match m1, m2 with
+    | Fin, Fin -> Fin, symdiff r1 r2
+    | Inv, Inv -> Fin, symdiff r1 r2
+    | Fin, Inv -> Inv, diff    r1 r2
+    | Inv, Fin -> Inv, diff    r2 r1
 
   let to_string = failwith "todo"  (* convert to DNF and print *)
 end)
