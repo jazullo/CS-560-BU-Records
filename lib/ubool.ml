@@ -149,10 +149,10 @@ module Make(C : Constant) = struct
     | POr (e3 :: rest), POr e4 -> POr [anf_distribute_single e3 (POr e4); anf_distribute_single (POr rest) (POr e4)]
     | POr e3, POr (e4 :: rest) -> POr [anf_distribute_single (POr e3) e4; anf_distribute_single (POr e3) (POr rest)]
     | POr (e3 :: rest), e4 -> POr [PAnd [e3; e4]; anf_distribute_single (POr rest) e4]
-    | POr [], e4 -> POr []
+    | POr [], _ -> POr []
     | e3, POr (e4 :: rest) -> POr [PAnd [e3; e4]; anf_distribute_single e3 (POr rest)]
-    | e3, POr [] -> POr []
-    | e3, e4 -> anf_distribute_single (POr [e1]) (POr [e2])
+    | _, POr [] -> POr []
+    | e3, e4 -> anf_distribute_single (POr [e3]) (POr [e4])
   
   let anf_to_dnf expr = anf_distribute (anf_flatten (anf_no_const (anf_no_not (anf_no_xor (anf_to_prop expr)))))
   
