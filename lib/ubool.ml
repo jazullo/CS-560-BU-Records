@@ -45,6 +45,117 @@ module Make(C : Constant) = struct
     printer out in_;
     IO.close_out out
   
+  type prop = 
+    | PConst of C.t
+    | PVar of int
+    | PNot of prop
+    | POr of prop list
+    | PAnd of prop list
+    | PXor of prop list
+  
+  let rec pretty_prop_paren out f paren = 
+    match f with
+      | PConst c -> fprintf out "%s" @@ C.to_string c
+      | PVar i -> fprintf out "X%d" i
+      | PNot e ->
+        fprintf out "¬";
+        pretty_prop_paren out e paren
+      | POr e -> pretty_prop_list_paren out e " \\/ " paren
+      | PAnd e -> pretty_prop_list_paren out e " /\\ " paren
+      | PXor e -> pretty_prop_list_paren out e " ^ " paren
+  and pretty_prop_list_paren out expr sep paren = 
+    if paren then fprintf out "(";
+    pretty_prop_list out expr sep;
+    if paren then fprintf out ")"
+  and pretty_prop_list out expr sep = match expr with
+    | [] -> ()
+    | [e] -> pretty_prop_paren out e true
+    | e :: rest ->
+      pretty_prop_paren out e true;
+      fprintf out "%s" sep;
+      pretty_prop_list out rest sep
+  let pretty_prop out f = pretty_prop_paren out f false
+
+  let rec anf_to_prop expr = match expr with
+    | BExpr e -> PXor (List.map (fun a -> PAnd (List.map (fun b -> anf_to_prop !b) a)) e)
+    | BVar i -> PVar i
+    | BConst c -> PConst c
+  
+  let rec anf_no_xor expr = match expr with
+    | PXor [e] -> e
+    | PXor [e1; e2] -> POr [PAnd [e1; PNot e2]; PAnd [PNot e1; e2]]
+    | PXor (e1 :: e2 :: rest) -> anf_no_xor (PXor (POr [PAnd [e1; PNot e2]; PAnd [PNot e1; e2]] :: rest))
+    | _ -> failwith "Wrong propositional formula format."
+  
+  let rec anf_no_not expr = match expr with
+    | PNot (PConst e) -> PConst (if e = C.one then C.zero else C.one)
+    | PNot (PNot e) -> anf_no_not e
+    | PNot (POr e1) -> PAnd (List.map (fun e2 -> anf_no_not (PNot e2)) e1)
+    | PNot (PAnd e1) -> POr (List.map (fun e2 -> anf_no_not (PNot e2)) e1)
+    | POr e1 -> POr (List.map (fun e2 -> anf_no_not e2) e1)
+    | PAnd e1 -> PAnd (List.map (fun e2 -> anf_no_not e2) e1)
+    | e -> e
+
+  let findb f l = match List.find_opt f l with
+    | Some _ -> true
+    | None -> false
+  let rec anf_no_const expr = let f = List.map (fun e -> anf_no_const e) in match expr with
+    | POr e1 ->
+      let e2 = f e1 in
+      let q = findb (fun e3 -> match e3 with PConst c -> c = C.one | _ -> false) e2 in
+      if q then
+        PConst C.one
+      else
+        let res = List.filter (fun e3 -> match e3 with PConst c -> c <> C.zero | _ -> true) e2 in
+        if List.is_empty res then PConst C.zero else POr res
+    | PAnd e1 ->
+      let e2 = f e1 in
+      let q = findb (fun e3 -> match e3 with PConst c -> c = C.zero | _ -> false) e2 in
+      if q then
+        PConst C.zero
+      else
+        let res = List.filter (fun e3 -> match e3 with PConst c -> c <> C.one | _ -> true) e2 in
+        if List.is_empty res then PConst C.one else PAnd res
+    | e -> e
+  
+  let rec anf_flatten expr = let f = List.map (fun e -> anf_flatten e) in match expr with
+    | POr [e] -> anf_flatten e
+    | POr e1 ->
+      let e2 = f e1 in
+      let e_or = List.filter (fun e3 -> match e3 with POr _ -> true | _ -> false) e2 in
+      let e_not_or = List.filter (fun e3 -> match e3 with POr _ -> false | PAnd [] -> false | _ -> true) e2 in
+      POr (List.fold (fun a e3 -> match e3 with POr e4 -> List.append (f e4) a | _ -> assert false) (f e_not_or) e_or)
+    | PAnd [e] -> anf_flatten e
+    | PAnd e1 ->
+      let e2 = f e1 in
+      let e_and = List.filter (fun e3 -> match e3 with PAnd _ -> true | _ -> false) e2 in
+      let e_not_and = List.filter (fun e3 -> match e3 with PAnd _ -> false | POr [] -> false | _ -> true) e2 in
+      PAnd (List.fold (fun a e3 -> match e3 with PAnd e4 -> List.append (f e4) a | _ -> assert false) (f e_not_and) e_and)
+    | e -> e
+  
+  let rec anf_distribute expr = let f = List.map (fun e -> anf_distribute e) in match expr with
+    | POr e1 ->
+      let e2 = f e1 in
+      anf_flatten (POr e2)
+    | PAnd e1 ->
+      let e2 = f e1 in
+      anf_flatten (POr (anf_distribute_or e2))
+    | e -> e
+  and anf_distribute_or expr = match expr with
+    | [] -> []
+    | [e] -> [e]
+    | e1 :: e2 :: rest -> anf_distribute_or ((anf_distribute_single e1 e2) :: rest)
+  and anf_distribute_single e1 e2 = match e1, e2 with
+    | POr (e3 :: rest), POr e4 -> POr [anf_distribute_single e3 (POr e4); anf_distribute_single (POr rest) (POr e4)]
+    | POr e3, POr (e4 :: rest) -> POr [anf_distribute_single (POr e3) e4; anf_distribute_single (POr e3) (POr rest)]
+    | POr (e3 :: rest), e4 -> POr [PAnd [e3; e4]; anf_distribute_single (POr rest) e4]
+    | POr [], e4 -> POr []
+    | e3, POr (e4 :: rest) -> POr [PAnd [e3; e4]; anf_distribute_single e3 (POr rest)]
+    | e3, POr [] -> POr []
+    | e3, e4 -> anf_distribute_single (POr [e1]) (POr [e2])
+  
+  let anf_to_dnf expr = anf_distribute (anf_flatten (anf_no_const (anf_no_not (anf_no_xor (anf_to_prop expr)))))
+  
   let bfresh_ () = [[ref (BVar (unique ()))]]
   let bfresh () = uref (bfresh_ ())
   
