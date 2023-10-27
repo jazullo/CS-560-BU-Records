@@ -77,7 +77,7 @@ end = struct
 
   (* syntactic unification *)
   let rec (=?) r = r |> unite ~sel:begin curry @@ function
-    | S.MVar _, u | u, S.MVar _ -> u (* Add an occurs check *)
+    | S.MVar v, u | u, S.MVar v -> occurs v u; u
     | S.MLit _ as u, v when u = v -> u
     | MFun (i1, o1) as f, MFun (i2, o2) -> 
       i1 =? i2;
@@ -88,5 +88,11 @@ end = struct
       r
     | _ -> failwith "Cannot unify distinct concrete types"
   end
+
+  and occurs v = function
+    | S.MVar u when v = u -> 
+      failwith "Cannot unify variable with term that contains it"
+    | MFun (i, o) -> occurs v (uget i); occurs v (uget o)
+    | _ -> ()
 
 end
