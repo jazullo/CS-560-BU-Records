@@ -61,7 +61,7 @@ end = Make(struct
     | Fin, Fin -> Fin, inter r1 r2
     | Inv, Inv -> Inv, union r1 r2
     | Fin, Inv -> Fin, diff  r1 r2
-    | Inv, Fin -> Inv, diff  r2 r1
+    | Inv, Fin -> Fin, diff  r2 r1
   let xor_const (m1, r1) (m2, r2) = match m1, m2 with
     | Fin, Fin -> Fin, symdiff r1 r2
     | Inv, Inv -> Fin, symdiff r1 r2
