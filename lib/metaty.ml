@@ -18,21 +18,19 @@ module rec S : sig
 
   and mlit = MInt | MBool
 
-  and recty = Free.ubool
+  and recty = Free.t
 
 end = S
 
 and Free : sig  (* Boolean unifier for free boolean rings *)
-  type boolean = boolean_ ref
-  and boolean_ = 
-    | BExpr of boolean list list
-    | BVar of int
-    | BConst of (mode * S.t Dict.t)  (* FBRs implemented as dicts *)
+  type t = _t uref
+  and _t = 
+    | Var of int
+    | Expr of ((mode * S.t Dict.t) * t list) list  (* FBRs implemented as dicts *)
   
-  type ubool = boolean list list uref
-
-  val unify : ubool -> ubool -> unit
-  val bfresh : unit -> ubool
+  val unify : t -> t -> unit
+  val simplify : _t -> _t
+  val fresh : unit -> t
 end = Make(struct
   (* Infinite Free Boolean Rings *)
 (* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
@@ -41,6 +39,14 @@ end = Make(struct
 
   let zero = Fin, Dict.empty
   let one  = Inv, Dict.empty
+
+  let is_zero = function
+    | Fin, d -> Dict.is_empty d
+    | _ -> false
+  
+  let is_one = function
+    | Inv, d -> Dict.is_empty d
+    | _ -> false
 
   (* important helpers *)
   let usnd c1 c2 = 
@@ -57,12 +63,12 @@ end = Make(struct
     | Some _, Some _ | None, None -> None
   end r
 
-  let and_const (m1, r1) (m2, r2) = match m1, m2 with
+  let add (m1, r1) (m2, r2) = match m1, m2 with
     | Fin, Fin -> Fin, inter r1 r2
     | Inv, Inv -> Inv, union r1 r2
     | Fin, Inv -> Fin, diff  r1 r2
     | Inv, Fin -> Fin, diff  r2 r1
-  let xor_const (m1, r1) (m2, r2) = match m1, m2 with
+  let mul (m1, r1) (m2, r2) = match m1, m2 with
     | Fin, Fin -> Fin, symdiff r1 r2
     | Inv, Inv -> Fin, symdiff r1 r2
     | Fin, Inv -> Inv, diff    r1 r2
@@ -75,6 +81,8 @@ and Unify : sig
   val (=?) : S.t -> S.t -> unit
 end = struct
 
+  let simplify r = uset r (Free.simplify (uget r))
+
   (* syntactic unification *)
   let rec (=?) r = r |> unite ~sel:begin curry @@ function
     | S.MVar v as w, S.MVar u when v = u -> w
@@ -86,7 +94,8 @@ end = struct
       f
     | TRec r1 as r, TRec r2 -> 
       Free.unify r1 r2;
-      (* Free.simp *) r
+      (* simplify r1; *)
+      r
     | _ -> failwith "Cannot unify distinct concrete types"
   end
 
@@ -94,7 +103,13 @@ end = struct
     | S.MVar u when v = u -> 
       failwith "Cannot unify variable with term that contains it"
     | MFun (i, o) -> occurs v (uget i); occurs v (uget o)
-    (* | TRec r ->  *)  (* Walk over the values in the constants and perform a check *)
+    | TRec r -> 
+      simplify r;
+      begin match uget r with
+      | Var _ -> ()
+      | Expr bs -> 
+        List.iter (fst %> snd %> Dict.iter (fun _ -> uget %> occurs v)) bs
+      end
     | _ -> ()
 
 end

@@ -1,4 +1,4 @@
-open! Batteries
+(* open! Batteries
 open Brml
 open Ubool
 
@@ -49,4 +49,4 @@ let () = print_endline (pretty_print pretty_prop (anf_distribute (PAnd [
     POr [PVar 0; PNot (PVar 1)];
     POr [PNot (PVar 0); PVar 1];
     POr [PNot (PVar 0); PNot (PVar 1)];
-  ])))
+  ]))) *)
