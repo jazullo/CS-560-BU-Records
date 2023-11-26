@@ -77,6 +77,7 @@ end = struct
 
   (* syntactic unification *)
   let rec (=?) r = r |> unite ~sel:begin curry @@ function
+    | S.MVar v as w, S.MVar u when v = u -> w
     | S.MVar v, u | u, S.MVar v -> occurs v u; u
     | S.MLit _ as u, v when u = v -> u
     | MFun (i1, o1) as f, MFun (i2, o2) -> 
@@ -85,7 +86,7 @@ end = struct
       f
     | TRec r1 as r, TRec r2 -> 
       Free.unify r1 r2;
-      r
+      (* Free.simp *) r
     | _ -> failwith "Cannot unify distinct concrete types"
   end
 
@@ -93,6 +94,7 @@ end = struct
     | S.MVar u when v = u -> 
       failwith "Cannot unify variable with term that contains it"
     | MFun (i, o) -> occurs v (uget i); occurs v (uget o)
+    (* | TRec r ->  *)  (* Walk over the values in the constants and perform a check *)
     | _ -> ()
 
 end
