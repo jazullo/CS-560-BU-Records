@@ -79,6 +79,7 @@ end)
 
 and Unify : sig
   val (=?) : S.t -> S.t -> unit
+  val simplify : Free.t -> unit
 end = struct
 
   let simplify r = uset r (Free.simplify (uget r))
@@ -111,5 +112,37 @@ end = struct
         List.iter (fst %> snd %> Dict.iter (fun _ -> uget %> occurs v)) bs
       end
     | _ -> ()
+
+end
+
+and Show : sig
+
+end = struct
+
+  open Printf
+
+  let rec print_t_fst out = uget %> print__t_fst out
+  and print__t_fst out = function
+    | S.MFun (i, o) -> 
+      print_t out i;
+      fprintf out " -> ";
+      print_t out o
+    | e -> print__t out e
+  and print_t out = uget %> print__t out
+  and print__t out = function
+    | S.MVar i -> fprintf out "a%d" i
+    | MLit MInt -> fprintf out "int"
+    | MLit MBool -> fprintf out "bool"
+    | MFun _ as e -> 
+      fprintf out "(";
+      print__t_fst out e;
+      fprintf out ")"
+    | S.TRec r -> print_rec_var out r
+  
+  and print_rec_var out r = 
+    Unify.simplify r;
+    match uget r with
+    | Free.Var i -> fprintf out "b%d" i
+    | Free.Expr _ -> failwith "todo"
 
 end
