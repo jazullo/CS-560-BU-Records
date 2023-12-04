@@ -126,7 +126,7 @@ end = struct
     | S.MFun (i, o) -> 
       print_t out i;
       fprintf out " -> ";
-      print_t out o
+      print_t_fst out o
     | e -> print__t out e
   and print_t out = uget %> print__t out
   and print__t out = function
@@ -137,12 +137,17 @@ end = struct
       fprintf out "(";
       print__t_fst out e;
       fprintf out ")"
-    | S.TRec r -> print_rec_var out r
+    | S.TRec r -> print_rec_ty out r
   
-  and print_rec_var out r = 
+  and print_rec_ty out r = 
     Unify.simplify r;
     match uget r with
     | Free.Var i -> fprintf out "b%d" i
-    | Free.Expr _ -> failwith "todo"
+    | Free.Expr e -> print_rec_expr out e
+  
+  and print_rec_expr out ts = 
+    fprintf out "(";
+    ignore ts;
+    fprintf out ")";
 
 end
