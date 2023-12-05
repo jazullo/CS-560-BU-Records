@@ -116,7 +116,7 @@ end = struct
 end
 
 and Show : sig
-
+  val print_ty : 'a BatInnerIO.output -> S._t uref -> unit
 end = struct
 
   open Printf
@@ -148,6 +148,8 @@ end = struct
   and print_rec_expr out ts = 
     fprintf out "(";
     ignore ts;
-    fprintf out ")";
+    fprintf out ")"
+  
+  let print_ty = print_t_fst
 
 end
