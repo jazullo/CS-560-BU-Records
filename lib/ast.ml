@@ -14,6 +14,7 @@ and _expr =
   | Arithmetic of expr * arith_op * expr
   | Comparative of expr * cmp_op * expr
   | Logical of expr * logic_op * expr
+  | LogicalUnary of logic_op * expr
   | Record of expr * rec_op * expr
   | Project of expr * string
   | Binding of string * expr * expr
