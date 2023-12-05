@@ -32,15 +32,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     u "Ternary condition expects a bool" (_2 e1) (_3 e1) (uref (MLit MBool));
     u "Ternary branches expect the same type" (_2 e1) (_3 e2) _t;
     u "Ternary branches expect the same type" (_2 e1) (_3 e3) _t
-  | Apply (e, es) ->  (* maybe simplify to not use a list *)
-    infer ctx e;
-    let rec go t0 e1 = function
-      | [] -> ()
-      | h :: t -> 
-        let v = fresh () in
-        go v (T3.map3 (fun _ -> v) e1) t;
-        apply ctx t0 e1 h in
-    go _t e es
+  | Apply (e, es) -> apply_many ctx _t e es
   | Arithmetic (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;
     u "Arithmetic op expects int left arg" (_2 e1) (_3 e1) (uref (MLit MInt));
@@ -89,7 +81,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     end;
     u "Unexpected projection result" _sp _t c
   
-  | Binding _ -> failwith "todo"    (* these will be annoying *)
+  | Binding _ -> failwith "todo"
   | Abstract _ -> failwith "todo"
   
   | RecordCon rs -> 
@@ -101,12 +93,22 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | IntLit _ -> u "Unexpected int type" _sp _t (uref (MLit MInt))
   | BoolLit _ -> u "Unexpected bool type" _sp _t (uref (MLit MBool))
 
-and apply ctx t0 e1 e2 = 
-  infer ctx e2;
-  let t3 = fresh () in
-  let t4 = fresh () in
-  u "Applicands must be functions" (_2 e1) (_3 e1) (uref (MFun (t3, t4)));
-  u "Unexpected argument type" (_2 e2) t3 (_3 e2);
-  u "Unexpected result type" (_2 e1) t4 t0
+and apply_many ctx t0 e1 es = 
+  infer ctx e1; List.iter (infer ctx) es;
+  let t_result = fresh () in
+  let t_args = List.fold_right (fun x acc -> uref (MFun (_3 x, acc))) es t_result in
+  u "Unexpected argument type" (_2 e1) t_args (_3 e1);
+  u "Unexpected result type" (_2 e1) t0 t_result
 
-    
+(* and abstract ctx t0 sp s t = 
+  let a = fresh () in
+  let ctx' = Dict.add s a ctx in
+  u "Unexpected function type" sp t0 (uref (MFun (a, t)));
+  ctx'
+
+and abstract_many ctx t0 sp t = function
+  | s :: ss -> 
+    let ctx' = abstract ctx t0 sp s t in
+    let v = fresh () in
+    abstract_many ctx' v sp v ss
+  | [] -> ctx *)
