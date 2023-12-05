@@ -136,7 +136,7 @@ module Make(C : Constant) = struct
   
   let rec solve e0 = match simp e0 with
     | [] -> ()
-    | [_, []] -> failwith "No unifiers."
+    | [_, []] -> raise (Common.UnifError "Incompatible Set Types.")
     | e -> 
       let u = select_var e in
       let t1, t2 = factor u e in

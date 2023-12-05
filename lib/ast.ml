@@ -7,7 +7,7 @@ type cmp_op = Eq | Ne | Gt | Lt | Ge | Le
 type logic_op = And | Or | Not
 type rec_op = Concatenate | Intersect
 
-type expr = _expr * span * Ty.S.t
+type expr = _expr * span * Types.S.t
 and _expr = 
   | Ternary of expr * expr * expr
   | Apply of expr * expr list

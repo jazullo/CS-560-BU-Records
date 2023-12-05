@@ -31,6 +31,9 @@ and Free : sig  (* Boolean unifier for free boolean rings *)
   val unify : t -> t -> unit
   val simplify : _t -> _t
   val fresh : unit -> t
+  val add_t : t -> t -> t
+  val mul_t : t -> t -> t
+  val uconst : mode * S.t Dict.t -> t
 end = Make(struct
   (* Infinite Free Boolean Rings *)
 (* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
@@ -97,12 +100,12 @@ end = struct
       Free.unify r1 r2;
       (* simplify r1; *)
       r
-    | _ -> failwith "Cannot unify distinct concrete types"
+    | _ -> raise (Common.UnifError "Cannot unify distinct concrete types.")
   end
 
   and occurs v = function
     | S.MVar u when v = u -> 
-      failwith "Cannot unify variable with term that contains it"
+      raise (Common.UnifError "Cannot unify variable with term that contains it.")
     | MFun (i, o) -> occurs v (uget i); occurs v (uget o)
     | TRec r -> 
       simplify r;
