@@ -46,7 +46,11 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | Logical (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;
     u "Logic op expects bool left arg" (_2 e1) (_3 e1) (uref (MLit MBool));
-    u "Logic op expects int right arg" (_2 e2) (_3 e2) (uref (MLit MBool));
+    u "Logic op expects bool right arg" (_2 e2) (_3 e2) (uref (MLit MBool));
+    u "Logic op expects bool result" _sp _t (uref (MLit MBool))
+  | LogicalUnary (_, e) ->
+    infer ctx e;
+    u "Logic op expects bool arg" (_2 e) (_3 e) (uref (MLit MBool));
     u "Logic op expects bool result" _sp _t (uref (MLit MBool))
   | Record (e1, Concatenate, e2) -> 
     infer ctx e1; infer ctx e2;
