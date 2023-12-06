@@ -23,17 +23,13 @@ let print_ctx ctx =
     Types.Show.print_ty stdout ty;
     printf "\n"
 
-(* let interpret = flags "interpret sources" "interpret" 'i' *)
-(* if O.get interpret then ... *)
+let interpret = flags "interpret sources" "interpret" 'i'
 
-(* let () = match P.parse_argv op with
+let () = match P.parse_argv op with
   | [] | _ :: _ :: _ -> P.usage op ()
-  | [fname] -> print_ctx (check fname) *)
-
-  
-
-let () = let lexbuf = Lexing.from_string "def main = 10 $" in
-let program = Parse.program_file Lex.token lexbuf in
-match interpret_defs program with
-  | IntVal i -> print_endline (string_of_int i)
-  | _ -> ()
+  | [fname] -> 
+    if O.get interpret then 
+      match interpret_defs (parse (File.open_in fname)) with
+      | IntVal i -> print_endline (string_of_int i)
+      | _ -> ()
+    else print_ctx (check fname)
