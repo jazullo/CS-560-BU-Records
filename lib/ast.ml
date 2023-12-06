@@ -22,6 +22,7 @@ and _expr =
   | RecordCon of (string * expr) list
   | IntLit of int
   | BoolLit of bool
+  | Ref of string
 
 type def = _def * span
 and _def = string * string list * expr

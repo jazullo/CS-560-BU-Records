@@ -63,6 +63,7 @@ expr:
   | LIT {(IntLit $1, $loc, fresh ())}
   | TRUE {(BoolLit true, $loc, fresh ())}
   | FALSE {(BoolLit false, $loc, fresh ())}
+  | ID {(Ref $1, $loc, fresh ())}
 
 expr_list:
   | {[]}

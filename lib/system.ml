@@ -101,6 +101,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     ) Dict.empty rs))))
   | IntLit _ -> u "Unexpected int type" _sp _t (uref (MLit MInt))
   | BoolLit _ -> u "Unexpected bool type" _sp _t (uref (MLit MBool))
+  | Ref _ -> assert false
 
 and apply_many ctx t0 e1 es = 
   infer ctx e1; List.iter (infer ctx) es;
