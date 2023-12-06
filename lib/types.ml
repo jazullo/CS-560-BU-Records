@@ -35,6 +35,7 @@ and Free : sig  (* Boolean unifier for free boolean rings *)
   val mul_t : t -> t -> t
   val uconst : mode * S.t Dict.t -> t
   val pretty_anf : 'a BatInnerIO.output -> t -> unit
+  val print_anf : t -> unit
 end = Make(struct
   (* Infinite Free Boolean Rings *)
 (* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
@@ -67,12 +68,12 @@ end = Make(struct
     | Some _, Some _ | None, None -> None
   end r
 
-  let add (m1, r1) (m2, r2) = match m1, m2 with
+  let mul (m1, r1) (m2, r2) = match m1, m2 with
     | Fin, Fin -> Fin, inter r1 r2
     | Inv, Inv -> Inv, union r1 r2
     | Fin, Inv -> Fin, diff  r1 r2
     | Inv, Fin -> Fin, diff  r2 r1
-  let mul (m1, r1) (m2, r2) = match m1, m2 with
+  let add (m1, r1) (m2, r2) = match m1, m2 with
     | Fin, Fin -> Fin, symdiff r1 r2
     | Inv, Inv -> Fin, symdiff r1 r2
     | Fin, Inv -> Inv, diff    r1 r2
