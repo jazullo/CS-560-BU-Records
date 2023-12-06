@@ -14,7 +14,7 @@ let fresh () = uref (MVar (unique ()))
 
 let err _sp msg unif_msg = 
   print_endline "Type Error.";
-  Printf.printf "";  (* print span *)
+  Common.print_span stdout _sp;
   print_endline (msg ^ ".");
   print_endline unif_msg
 
@@ -117,9 +117,11 @@ and abstract_many ctx t0 e1 ps =
     List.fold_right (fun x acc -> uref (MFun (x, acc))) t_args (_3 e1)
 
 let infer_defs ctx defs = 
-  let t_defs_full = List.map (fun (name, args, body) -> name, fresh (), args, body) defs in
+  let t_defs_full = 
+    List.map (fun ((name, args, body), _) -> name, fresh (), args, body) defs in
   let t_defs = List.map (fun (name, v, _, _) -> name, v) t_defs_full in
   let ctx' = Cyclic.insert_many t_defs ctx in
   List.iter (fun (_, v, args, body) -> 
     abstract_many ctx' v body args;
-  ) t_defs_full
+  ) t_defs_full;
+  ctx'

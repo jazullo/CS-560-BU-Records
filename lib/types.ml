@@ -77,7 +77,7 @@ end = Make(struct
     | Fin, Inv -> Inv, diff    r1 r2
     | Inv, Fin -> Inv, diff    r2 r1
 
-  let to_string = failwith "todo"  (* convert to DNF and print *)
+  let to_string _ = "rec const"
 end)
 
 and Unify : sig
@@ -151,6 +151,9 @@ end = struct
   and print_rec_expr out ts = 
     fprintf out "(";
     ignore ts;
+
+    fprintf out "record";
+
     fprintf out ")"
   
   let print_ty = print_t_fst
