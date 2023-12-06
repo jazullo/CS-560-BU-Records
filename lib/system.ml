@@ -85,8 +85,13 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     end;
     u "Unexpected projection result" _sp _t c
   
-  | Binding _ -> failwith "todo"
-  | Abstract _ -> failwith "todo"
+  | Binding (s, ps, e1, e2) -> 
+    let a = fresh () in
+    abstract_many ctx a e1 ps;
+    let ctx' = Dict.add s a ctx in
+    infer ctx' e2
+
+  | Abstract (ps, e) -> abstract_many ctx _t e ps
   
   | RecordCon rs -> 
     u "Unexpected record type" _sp _t
@@ -104,15 +109,9 @@ and apply_many ctx t0 e1 es =
   u "Unexpected argument type" (_2 e1) t_args (_3 e1);
   u "Unexpected result type" (_2 e1) t0 t_result
 
-(* and abstract ctx t0 sp s t = 
-  let a = fresh () in
-  let ctx' = Dict.add s a ctx in
-  u "Unexpected function type" sp t0 (uref (MFun (a, t)));
-  ctx'
-
-and abstract_many ctx t0 sp t = function
-  | s :: ss -> 
-    let ctx' = abstract ctx t0 sp s t in
-    let v = fresh () in
-    abstract_many ctx' v sp v ss
-  | [] -> ctx *)
+and abstract_many ctx t0 e1 ps = 
+  let ctx' = List.fold_left (fun c s -> Dict.add s (fresh ()) c) ctx ps in
+  infer ctx' e1;
+  let t_args = List.map (fun s -> Dict.find s ctx') ps in
+  u "Unexpected function type" (_2 e1) t0 @@
+    List.fold_right (fun x acc -> uref (MFun (x, acc))) t_args (_3 e1)
