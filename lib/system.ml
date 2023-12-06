@@ -59,24 +59,18 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     infer ctx e1; infer ctx e2;
     let l = Free.fresh () in
     let r = Free.fresh () in
-    let o = Free.fresh () in
     u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
     u "Record op expects rec right arg" (_2 e2) (_3 e2) (uref (TRec r));
-    u "Record op expects rec result" _sp _t (uref (TRec o));
-    begin try Free.unify o (union_t l r) with Common.UnifError msg -> 
-      err _sp "Union of records is not compatable with expected result" msg
-    end
+    u "Union of records is not compatable with expected result" _sp _t
+      (uref (TRec (union_t l r)))
   | Record (e1, Intersect, e2) -> 
     infer ctx e1; infer ctx e2;
     let l = Free.fresh () in
     let r = Free.fresh () in
-    let o = Free.fresh () in
     u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
     u "Record op expects rec right arg" (_2 e2) (_3 e2) (uref (TRec r));
-    u "Record op expects rec result" _sp _t (uref (TRec o));
-    begin try Free.unify o Free.(mul_t l r) with Common.UnifError msg -> 
-        err _sp "Intersection of records is not compatable with expected result" msg
-    end
+    u "Record op expects rec result" _sp _t
+      (uref (TRec (Free.mul_t l r)))
   | Project (e, s) -> 
     infer ctx e;
     let a = Free.fresh () in  (* rest of the record *)

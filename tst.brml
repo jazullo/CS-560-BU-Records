@@ -1,3 +1,2 @@
-def r = {x=1}
-def f x = x.z
-def o = f(r())
+def f u v = 
+  u | v
