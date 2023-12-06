@@ -14,7 +14,7 @@ let fresh () = uref (MVar (unique ()))
 
 let err _sp msg unif_msg = 
   print_endline "Type Error.";
-  Printf.printf "";  (* print span *)
+  Common.print_span stdout _sp;
   print_endline (msg ^ ".");
   print_endline unif_msg
 
