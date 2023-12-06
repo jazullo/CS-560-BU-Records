@@ -16,7 +16,7 @@ and _expr =
   | Logical of expr * logic_op * expr
   | Record of expr * rec_op * expr
   | Project of expr * string
-  | Binding of string * expr * expr
+  | Binding of string * string list * expr * expr
   | Abstract of string list * expr
   | RecordCon of (string * expr) list
   | IntLit of int
