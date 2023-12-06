@@ -1,3 +1,8 @@
 def f u v = 
   let r = u | v in
   r.w + r.x + r.y + r.z
+
+def main = 
+  let r1 = {w = 2, x = 3, y = 5} in
+  let r2 = {x = 7, y = 11, z = 13} in
+  f (r1, r2)

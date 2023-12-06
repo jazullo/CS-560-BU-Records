@@ -31,5 +31,5 @@ let () = match P.parse_argv op with
     if O.get interpret then 
       match interpret_defs (parse (File.open_in fname)) with
       | IntVal i -> print_endline (string_of_int i)
-      | _ -> ()
+      | _ -> assert false
     else print_ctx (check fname)
