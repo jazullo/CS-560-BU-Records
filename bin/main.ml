@@ -18,7 +18,7 @@ let check fname =
   System.infer_defs Cyclic.empty ast
 
 let print_ctx ctx = 
-  Cyclic.to_list ctx |> List.iter @@ fun (name, ty) -> 
+  Cyclic.to_list ctx |> List.iter @@ fun (name, (ty, _)) -> 
     printf "%s : " name;
     Types.Show.print_ty stdout ty;
     printf "\n"

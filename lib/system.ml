@@ -88,7 +88,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | Binding (s, ps, e1, e2) -> 
     let a = fresh () in
     abstract_many ctx a e1 ps;
-    let ctx' = Cyclic.insert s a ctx in
+    let ctx' = Cyclic.insert s (a, false) ctx in
     infer ctx' e2
 
   | Abstract (ps, e) -> abstract_many ctx _t e ps
@@ -103,7 +103,8 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | BoolLit _ -> u "Unexpected bool type" _sp _t (uref (MLit MBool))
   | Ref s -> (match Cyclic.find_rec_opt s ctx with
     | None -> err _sp "Unbound Identifier" ("Cannot find ["^s^"].")
-    | Some (t, _) -> u "Identifier with unexpected type" _sp _t t)
+    | Some ((t, false), _) -> u "Identifier with unexpected type" _sp _t t
+    | Some ((t, true), _) -> u "Identifier with unexpected type" _sp _t (generalize t))
 
 and apply_many ctx t0 e1 es = 
   infer ctx e1; List.iter (infer ctx) es;
@@ -113,18 +114,15 @@ and apply_many ctx t0 e1 es =
   u "Unexpected result type" (_2 e1) t0 t_result
 
 and abstract_many ctx t0 e1 ps = 
-  let ctx' = List.fold_left (fun c s -> Cyclic.insert s (fresh ()) c) ctx ps in
+  let ctx' = List.fold_left (fun c s -> Cyclic.insert s (fresh (), false) c) ctx ps in
   infer ctx' e1;
-  let t_args = List.map (fun s -> Cyclic.find_rec s ctx' |> fst) ps in
+  let t_args = List.map (fun s -> Cyclic.find_rec s ctx' |> fst |> fst) ps in
   u "Unexpected function type" (_2 e1) t0 @@
     List.fold_right (fun x acc -> uref (MFun (x, acc))) t_args (_3 e1)
 
-let infer_defs ctx defs = 
-  let t_defs_full = 
-    List.map (fun ((name, args, body), _) -> name, fresh (), args, body) defs in
-  let t_defs = List.map (fun (name, v, _, _) -> name, v) t_defs_full in
-  let ctx' = Cyclic.insert_many t_defs ctx in
-  List.iter (fun (_, v, args, body) -> 
-    abstract_many ctx' v body args;
-  ) t_defs_full;
-  ctx'
+let infer_defs ctx = List.fold_left (fun ctx' ((name, args, body), _) -> 
+  let a = fresh () in
+  let ctx'' = Cyclic.insert name (a, true) ctx' in
+  abstract_many ctx'' a body args;
+  ctx''
+) ctx

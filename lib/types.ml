@@ -93,6 +93,7 @@ end)
 and Unify : sig
   val (=?) : S.t -> S.t -> unit
   val simplify : Free.t -> unit
+  val generalize : S.t -> S.t
 end = struct
 
   let simplify r = uset r (Free.simplify (uget r))
@@ -125,7 +126,22 @@ end = struct
         List.iter (fst %> snd %> Dict.iter (fun _ -> uget %> occurs v)) bs
       end
     | _ -> ()
-
+  
+  let generalize t0 = 
+    let tbl = Hashtbl.create 16 in
+    let cache x = 
+      Hashtbl.find_option tbl x |> Option.default_delayed @@ fun () -> 
+        let nu = uref @@ S.MVar (unique ()) in
+        Hashtbl.add tbl x nu;
+        nu in
+    let rec gen t = 
+      match uget t with
+      | S.MVar i -> cache i
+      | MLit _ -> t
+      | MFun (i, o) -> uref (S.MFun (gen i, gen o))
+      | TRec r -> uref (S.TRec r) in
+    gen t0
+  
 end
 
 and Show : sig
