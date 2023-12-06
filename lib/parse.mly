@@ -14,7 +14,7 @@
 
 %start<def list> program_file
 
-%left ADD SUB OR AND
+%left ADD SUB
 %left MUL DIV MOD
 %left INTERSECT
 %left CONCAT
@@ -56,7 +56,7 @@ expr:
   | LPAREN expr RPAREN {$2}
   | LBRACE asgn_list RBRACE {(RecordCon $2, $loc, uref (Types.S.MVar 0))}
   | expr PERIOD ID {(Project ($1, $3), $loc, uref (Types.S.MVar 0))}
-  | LET asgn IN expr {(let (x, y) = $2 in Binding (x, y, $4), $loc, uref (Types.S.MVar 0))}
+  | LET asgn IN expr {(let (x, y) = $2 in Binding (x, [], y, $4), $loc, uref (Types.S.MVar 0))} (* TODO *)
   | BACKSLASH ID ID* ARROW expr {(Abstract ($2 :: $3, $5), $loc, uref (Types.S.MVar 0))}
   | LIT {(IntLit $1, $loc, uref (Types.S.MVar 0))}
   | TRUE {(BoolLit true, $loc, uref (Types.S.MVar 0))}
