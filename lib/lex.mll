@@ -10,7 +10,7 @@ let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '0'-'9']*
 let lit = ['0'-'9']+
 
 rule token = parse
-  | "eof" {EOF}
+  | eof {EOF}
   | "$" {EOF}
   | whitespace {token lexbuf}
 
