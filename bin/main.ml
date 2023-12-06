@@ -1,9 +1,13 @@
+[@@@warning "-32"]
+[@@@warning "-33"]
+
 open! Batteries
 open! Brml
 open! Interpreter
 open! Ast
 open Printf
 open Cli
+
 
 let parse ch = 
   let lexbuf = Lexing.from_channel ch in
@@ -22,14 +26,14 @@ let print_ctx ctx =
 (* let interpret = flags "interpret sources" "interpret" 'i' *)
 (* if O.get interpret then ... *)
 
-let () = match P.parse_argv op with
+(* let () = match P.parse_argv op with
   | [] | _ :: _ :: _ -> P.usage op ()
-  | [fname] -> print_ctx (check fname)
+  | [fname] -> print_ctx (check fname) *)
 
   
 
-(* let () = let lexbuf = Lexing.from_string "def main = 10 $" in
+let () = let lexbuf = Lexing.from_string "def main = 10 $" in
 let program = Parse.program_file Lex.token lexbuf in
 match interpret_defs program with
   | IntVal i -> print_endline (string_of_int i)
-  | _ -> () *)
+  | _ -> ()
