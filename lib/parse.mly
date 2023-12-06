@@ -14,9 +14,16 @@
 
 %start<def list> program_file
 
-%left ADD SUB MUL DIV MOD NOT OR AND CONCAT INTERSECT PERIOD
+%left ADD SUB OR AND
+%left MUL DIV MOD
+%left INTERSECT
+%left CONCAT
+%left AND
+%left OR
+%left PERIOD
 %right IN ARROW LPAREN
-%nonassoc EQ NE LT LE GT GE
+%nonassoc NOT EQ NE LT LE GT GE
+
 %%
 
 program_file: program EOF {$1}
