@@ -1,6 +1,8 @@
 open Batteries
 open Uref
 
+exception Err
+
 module type Constant = sig
   type t
 
@@ -103,11 +105,13 @@ module Make(C : Constant) = struct
     | Expr (t :: ts) -> 
       pretty_term_anf out t;
       List.iter (fun x -> fprintf out " + "; pretty_term_anf out x) ts
-  
-  let print_anf u = 
+
+  let string_anf u = 
     let out = IO.output_string () in
     pretty_anf out u;
-    print_endline (IO.close_out out)
+    IO.close_out out
+  
+  let print_anf u = print_endline (string_anf u)
   
   let[@warning "-8"] smallterm (x :: xs) = 
     List.fold_left (fun t t' -> 
@@ -136,7 +140,7 @@ module Make(C : Constant) = struct
   
   let rec solve e0 = match simp e0 with
     | [] -> ()
-    | [_, []] -> raise (Common.UnifError "Incompatible Set Types.")
+    | [_, []] -> raise Err
     | e -> 
       let u = select_var e in
       let t1, t2 = factor u e in
@@ -147,9 +151,12 @@ module Make(C : Constant) = struct
   
   let unify r = unite ~sel:(curry @@ function
     | Var i, _ | _, Var i -> Var i
-    | Expr e1 as x, Expr e2 -> 
-      solve (e1 @ e2);
-      x
+    | Expr e1 as x, (Expr e2 as y) -> 
+      try solve (e1 @ e2); x with
+      | Err -> raise @@ Common.UnifError (Printf.sprintf 
+        "Incompatible Set Types <%s> and <%s>."
+        (string_anf (uref x))
+        (string_anf (uref y)))
   ) r
 
 end
