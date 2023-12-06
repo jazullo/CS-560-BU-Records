@@ -34,6 +34,7 @@ and Free : sig  (* Boolean unifier for free boolean rings *)
   val add_t : t -> t -> t
   val mul_t : t -> t -> t
   val uconst : mode * S.t Dict.t -> t
+  val pretty_anf : 'a BatInnerIO.output -> t -> unit
 end = Make(struct
   (* Infinite Free Boolean Rings *)
 (* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
@@ -77,7 +78,15 @@ end = Make(struct
     | Fin, Inv -> Inv, diff    r1 r2
     | Inv, Fin -> Inv, diff    r2 r1
 
-  let to_string _ = "rec const"
+  let to_string (mode, d) = 
+    let body = IO.output_string () in
+    Dict.print
+      ~first:"{" ~last:"}" ~sep:", " ~kvsep:" : "
+      String.print Show.print_ty body d;
+    (match mode with
+    | Fin -> ""
+    | Inv -> "!"
+    ) ^ IO.close_out body
 end)
 
 and Unify : sig
@@ -144,17 +153,9 @@ end = struct
   
   and print_rec_ty out r = 
     Unify.simplify r;
-    match uget r with
-    | Free.Var i -> fprintf out "b%d" i
-    | Free.Expr e -> print_rec_expr out e
-  
-  and print_rec_expr out ts = 
-    fprintf out "(";
-    ignore ts;
-
-    fprintf out "record";
-
-    fprintf out ")"
+    fprintf out "<";
+    Free.pretty_anf out r;
+    fprintf out ">"
   
   let print_ty = print_t_fst
 

@@ -1,1 +1,1 @@
-def r x = x.field
+def r = {x=1}
