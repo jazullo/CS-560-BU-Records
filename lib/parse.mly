@@ -16,7 +16,8 @@
 
 %start<def list> program_file
 
-%right IN ARROW LPAREN
+%right IN
+%right ARROW LPAREN
 %nonassoc NOT EQ NE LT LE GT GE
 %left ADD SUB
 %left MUL DIV MOD
