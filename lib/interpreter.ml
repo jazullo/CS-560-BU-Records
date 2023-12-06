@@ -4,7 +4,7 @@ open! Ast
 module Dict = Map.Make(String)
 
 type value =
-  | FunVal of expr
+  | FunVal of string list * expr
   | RecordVal of value Dict.t
   | IntVal of int
   | BoolVal of bool
@@ -15,8 +15,15 @@ let rec interpret_expr e ctx =
   | Ternary (cond, e1, e2) ->
     let a = match interpret_expr cond ctx with BoolVal b -> b | _ -> assert false in
     interpret_expr (if a then e1 else e2) ctx
-  (* | Apply (e, params) ->
-    let a = match interpret_expr cond ctx with BoolVal b -> b | _ -> assert false in *)
+  | Apply (e, params) ->
+    let a, b = match interpret_expr e ctx with FunVal (p, e) -> p, e | _ -> assert false in
+    let c = List.map (fun param -> interpret_expr param ctx) params in
+    let new_ctx = Dict.merge (fun _ x y -> match x, y with
+      | Some _, Some y -> Some y
+      | None, y -> y
+      | x, None -> x
+    ) ctx (Dict.of_list (List.combine a c)) in
+    interpret_expr b new_ctx
   | Arithmetic (e1, op, e2) ->
     let a = match interpret_expr e1 ctx with IntVal i -> i | _ -> assert false in
     let b = match interpret_expr e2 ctx with IntVal i -> i | _ -> assert false in
@@ -58,6 +65,7 @@ let rec interpret_expr e ctx =
   | RecordCon l -> RecordVal (Dict.of_list (List.map (fun (s, e) -> (s, interpret_expr e ctx)) l))
   | IntLit i -> IntVal i
   | BoolLit b -> BoolVal b
+  | Ref s -> ctx |> Dict.find s
   | _ -> assert false
 
 let interpret_def def ctx =
@@ -66,6 +74,6 @@ let interpret_def def ctx =
   interpret_expr e ctx
 
 let interpret_defs defs =
-  let ctx = Dict.of_list (List.map (fun def -> let (_def, _) = def in let (name, _, e) = _def in (name, e)) defs) in
+  let ctx = Dict.of_list (List.map (fun def -> let (_def, _) = def in let (name, params, e) = _def in (name, FunVal (params, e))) defs) in
   let is_main = fun def -> let (_def, _) = def in let (name, _, _) = _def in name = "main" in
   interpret_def (List.find is_main defs) ctx
