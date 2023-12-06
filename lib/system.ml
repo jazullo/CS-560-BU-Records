@@ -16,7 +16,8 @@ let err _sp msg unif_msg =
   print_endline "Type Error.";
   Common.print_span stdout _sp;
   print_endline (msg ^ ".");
-  print_endline unif_msg
+  print_endline unif_msg;
+  exit 1
 
 let u msg sp t1 t2 = (* unify w/ metadata *)
   try t1 =? t2 with
@@ -101,7 +102,9 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     ) Dict.empty rs))))
   | IntLit _ -> u "Unexpected int type" _sp _t (uref (MLit MInt))
   | BoolLit _ -> u "Unexpected bool type" _sp _t (uref (MLit MBool))
-  | Ref _ -> assert false
+  | Ref s -> (match Cyclic.find_rec_opt s ctx with
+    | None -> err _sp "Unbound Identifier" ("Cannot find ["^s^"].")
+    | Some (t, _) -> u "Identifier with unexpected type" _sp _t t)
 
 and apply_many ctx t0 e1 es = 
   infer ctx e1; List.iter (infer ctx) es;
