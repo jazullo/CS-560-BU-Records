@@ -115,3 +115,9 @@ and abstract_many ctx t0 e1 ps =
   let t_args = List.map (fun s -> Dict.find s ctx') ps in
   u "Unexpected function type" (_2 e1) t0 @@
     List.fold_right (fun x acc -> uref (MFun (x, acc))) t_args (_3 e1)
+
+and infer_defs ctx = List.fold_left (fun ctx' (name, args, body) -> 
+  let a = fresh () in
+  abstract_many ctx' a body args;
+  Dict.add name a ctx'
+) ctx
