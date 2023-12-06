@@ -117,7 +117,7 @@ and abstract_many ctx t0 e1 ps =
 
 let infer_defs ctx = List.fold_left (fun ctx' ((name, args, body), _) -> 
   let a = fresh () in
-  let ctx'' = Cyclic.insert name (a, true) ctx' in
+  let ctx'' = Cyclic.insert name (a, false) ctx' in
   abstract_many ctx'' a body args;
-  ctx''
+  Cyclic.insert name (a, true) ctx''
 ) ctx
