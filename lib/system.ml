@@ -88,7 +88,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | Binding (s, ps, e1, e2) -> 
     let a = fresh () in
     abstract_many ctx a e1 ps;
-    let ctx' = Dict.add s a ctx in
+    let ctx' = Cyclic.insert s a ctx in
     infer ctx' e2
 
   | Abstract (ps, e) -> abstract_many ctx _t e ps
@@ -110,14 +110,16 @@ and apply_many ctx t0 e1 es =
   u "Unexpected result type" (_2 e1) t0 t_result
 
 and abstract_many ctx t0 e1 ps = 
-  let ctx' = List.fold_left (fun c s -> Dict.add s (fresh ()) c) ctx ps in
+  let ctx' = List.fold_left (fun c s -> Cyclic.insert s (fresh ()) c) ctx ps in
   infer ctx' e1;
-  let t_args = List.map (fun s -> Dict.find s ctx') ps in
+  let t_args = List.map (fun s -> Cyclic.find_rec s ctx' |> fst) ps in
   u "Unexpected function type" (_2 e1) t0 @@
     List.fold_right (fun x acc -> uref (MFun (x, acc))) t_args (_3 e1)
 
-and infer_defs ctx = List.fold_left (fun ctx' (name, args, body) -> 
-  let a = fresh () in
-  abstract_many ctx' a body args;
-  Dict.add name a ctx'
-) ctx
+let infer_defs ctx defs = 
+  let t_defs_full = List.map (fun (name, args, body) -> name, fresh (), args, body) defs in
+  let t_defs = List.map (fun (name, v, _, _) -> name, v) t_defs_full in
+  let ctx' = Cyclic.insert_many t_defs ctx in
+  List.iter (fun (_, v, args, body) -> 
+    abstract_many ctx' v body args;
+  ) t_defs_full
