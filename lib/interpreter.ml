@@ -59,14 +59,33 @@ let rec interpret_expr e ctx =
       | Not -> BoolVal (not a)
       | _ -> assert false
     end
+  | Record (e1, op, e2) ->
+    let a = match interpret_expr e1 ctx with RecordVal r -> r | _ -> assert false in
+    let b = match interpret_expr e2 ctx with RecordVal r -> r | _ -> assert false in
+    begin match op with
+      | Concatenate -> RecordVal (Dict.merge (fun _ x y -> match x, y with
+          | Some _, Some y -> Some y
+          | None, y -> y
+          | x, None -> x
+        ) a b)
+      | Intersect -> RecordVal (Dict.merge (fun _ x y -> match x, y with
+          | Some _, Some y -> Some y
+          | None, _ -> None
+          | _, None -> None
+        ) a b)
+    end
   | Project (e, s) ->
     let a = match interpret_expr e ctx with RecordVal r -> r | _ -> assert false in
     a |> Dict.find s
+  | Binding (s, _, e1, e2) ->
+    let a = interpret_expr e1 ctx in
+    interpret_expr e2 (ctx |> Dict.add s a)
+  | Abstract (params, e) ->
+    FunVal (params, e) (* TODO closures *)
   | RecordCon l -> RecordVal (Dict.of_list (List.map (fun (s, e) -> (s, interpret_expr e ctx)) l))
   | IntLit i -> IntVal i
   | BoolLit b -> BoolVal b
   | Ref s -> ctx |> Dict.find s
-  | _ -> assert false
 
 let interpret_def def ctx =
   let (_def, _) = def in
