@@ -83,7 +83,8 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     let a = fresh () in
     abstract_many ctx a e1 ps;
     let ctx' = Cyclic.insert s (a, false) ctx in
-    infer ctx' e2
+    infer ctx' e2;
+    u "Unexpected type from let expression" _sp _t (_3 e2)
 
   | Abstract (ps, e) -> abstract_many ctx _t e ps
   
