@@ -1,0 +1,2 @@
+def foo r = r.r.x
+def main = foo({r = {x = 5}})
