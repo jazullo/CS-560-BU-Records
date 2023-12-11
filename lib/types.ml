@@ -129,17 +129,29 @@ end = struct
   
   let generalize t0 = 
     let tbl = Hashtbl.create 16 in
+    let tbl_rec = Hashtbl.create 16 in
     let cache x = 
       Hashtbl.find_option tbl x |> Option.default_delayed @@ fun () -> 
         let nu = uref @@ S.MVar (unique ()) in
         Hashtbl.add tbl x nu;
+        nu in
+    let cache_rec x = 
+      Hashtbl.find_option tbl_rec x |> Option.default_delayed @@ fun () -> 
+        let nu = uref @@ Free.Var (unique ()) in
+        Hashtbl.add tbl_rec x nu;
         nu in
     let rec gen t = 
       match uget t with
       | S.MVar i -> cache i
       | MLit _ -> t
       | MFun (i, o) -> uref (S.MFun (gen i, gen o))
-      | TRec r -> uref (S.TRec r) in
+      | TRec r -> uref (S.TRec (gen_rec r))
+    and gen_rec r = 
+      let gen_term ((mode, coeff), vars) = 
+        (mode, Dict.map gen coeff), List.map gen_rec vars in
+      match uget r with
+      | Free.Var i -> cache_rec i
+      | Expr e -> uref @@ Free.Expr (List.map gen_term e) in
     gen t0
   
 end
