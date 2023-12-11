@@ -1,0 +1,4 @@
+def union_ex r1 r2 = (r1 | r2).x
+def inter_ex r1 r2 = (r1 & r2).x
+
+def main = 0
