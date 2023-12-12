@@ -5,7 +5,8 @@
   open Parse
 }
 
-let whitespace = ' '+ | ['\r' '\n'] | '\r' '\n' | '\t'
+let whitespace = ' '+ | '\t'
+let eol = ['\r' '\n'] | '\r' '\n'
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '0'-'9']*
 let lit = ['0'-'9']+
 
@@ -13,6 +14,7 @@ rule token = parse
   | eof {EOF}
   | "$" {EOF}
   | whitespace {token lexbuf}
+  | eol {new_line lexbuf; token lexbuf}
 
   | "(" {LPAREN}
   | ")" {RPAREN}
