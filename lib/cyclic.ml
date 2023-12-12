@@ -36,24 +36,12 @@ let[@warning "-8"] blacken (T (_, a, y, b)) = T (B, a, y, b)
 let insert k v s = 
   let rec ins = function
     | E -> T (R, E, (k, v, s'), E)
-    | T (color, a, y, b) as t -> 
+    | T (color, a, y, b) -> 
       match[@warning "-8"] Stdlib.compare k (first y) with
       | -1 -> balance (T (color, ins a, y, b))
-      | 0 -> t
+      | 0 -> T (R, E, (k, v, s'), E)  (* replace on reinsertion *)
       | 1 -> balance (T (color, a, y, ins b))
   and s' = lazy (blacken (ins s)) in
-  force s'
-
-let insert_many kvs s = 
-  let rec ins k v = function
-    | E -> T (R, E, (k, v, s'), E)
-    | T (color, a, y, b) as t -> 
-      match[@warning "-8"] Stdlib.compare k (first y) with
-      | -1 -> balance (T (color, ins k v a, y, b))
-      | 0 -> t
-      | 1 -> balance (T (color, a, y, ins k v b))
-  and s' = lazy (List.fold_right (fun (k, v) s -> 
-    blacken (ins k v s)) kvs s) in
   force s'
 
 let rec to_list = function

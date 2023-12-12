@@ -1,1 +1,2 @@
-def main r = r.x
+def id x = x
+def main = id(5)
