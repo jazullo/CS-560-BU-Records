@@ -55,17 +55,22 @@ end = Make(struct
 
   (* important helpers *)
   let usnd c1 c2 = 
-    Unify.(=?) c1 c2;
+    Unify.(c1 =? c2);
     c2
   let liftA2 f o1 o2 = match o1, o2 with
     | Some x1, Some x2 -> Some (f x1 x2)
     | None, _ | _, None -> None
   let inter r = Dict.merge (fun _ -> liftA2 usnd) r
   let union r = Dict.union (fun _ r1 r2 -> Some (usnd r1 r2)) r
-  let diff r1 r2 = Dict.filter (fun s _ -> not @@ Dict.mem s r2) r1
+  let diff r = Dict.merge begin fun _ r1 r2 -> match r1, r2 with
+    | Some _ as r3, None -> r3
+    | Some c1, Some c2 -> Unify.(c1 =? c2); None
+    | None, None | None, (Some _) -> None
+  end r
   let symdiff r = Dict.merge begin fun _ r1 r2 -> match r1, r2 with
     | Some _ as r3, None | None, (Some _ as r3) -> r3
-    | Some _, Some _ | None, None -> None
+    | Some c1, Some c2 -> Unify.(c1 =? c2); None
+    | None, None -> None
   end r
 
   let mul (m1, r1) (m2, r2) = match m1, m2 with

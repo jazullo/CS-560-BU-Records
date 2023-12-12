@@ -1,3 +1,1 @@
-def f r = 
-  let x = 0 in
-  r.w + r.x
+def main = {x = 0}.x
