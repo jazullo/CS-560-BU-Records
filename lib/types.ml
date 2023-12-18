@@ -22,11 +22,11 @@ module rec S : sig
 
 end = S
 
-and Free : sig  (* Boolean unifier for free boolean rings *)
+and Free : sig  (* Boolean unifier for infinite boolean rings *)
   type t = _t uref
   and _t = 
     | Var of int
-    | Expr of ((mode * S.t Dict.t) * t list) list  (* FBRs implemented as dicts *)
+    | Expr of ((mode * S.t Dict.t) * t list) list  (* as dicts with complement flag *)
   
   val unify : t -> t -> unit
   val simplify : _t -> _t
@@ -81,8 +81,8 @@ end = Make(struct
   let add (m1, r1) (m2, r2) = match m1, m2 with
     | Fin, Fin -> Fin, symdiff r1 r2
     | Inv, Inv -> Fin, symdiff r1 r2
-    | Fin, Inv -> Inv, diff    r1 r2
-    | Inv, Fin -> Inv, diff    r2 r1
+    | Fin, Inv -> Inv, symdiff r1 r2
+    | Inv, Fin -> Inv, symdiff r2 r1
 
   let to_string (mode, d) = 
     let body = IO.output_string () in

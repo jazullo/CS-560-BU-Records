@@ -1,0 +1,5 @@
+def union_ex r1 r2 = (r1 | r2).x
+
+def tst3 = union_ex ({}, {})
+
+def main = 0
