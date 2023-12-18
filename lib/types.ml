@@ -82,7 +82,7 @@ end = Make(struct
     | Fin, Fin -> Fin, symdiff r1 r2
     | Inv, Inv -> Fin, symdiff r1 r2
     | Fin, Inv -> Inv, symdiff r1 r2
-    | Inv, Fin -> Inv, symdiff r2 r1
+    | Inv, Fin -> Inv, symdiff r1 r2
 
   let to_string (mode, d) = 
     let body = IO.output_string () in
