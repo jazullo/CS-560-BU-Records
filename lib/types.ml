@@ -42,15 +42,15 @@ end = Make(struct
    Inv: Dict is complemented (the tags of the record are _all other strings_ ) *)
   type t = mode * S.t Dict.t
 
-  let zero = Fin, Dict.empty
-  let one  = Inv, Dict.empty
+  let zero = Inv, Dict.empty  (* all of these are flipped in this branch *)
+  let one  = Fin, Dict.empty
 
   let is_zero = function
-    | Fin, d -> Dict.is_empty d
+    | Inv, d -> Dict.is_empty d
     | _ -> false
   
   let is_one = function
-    | Inv, d -> Dict.is_empty d
+    | Fin, d -> Dict.is_empty d
     | _ -> false
 
   (* important helpers *)
@@ -73,16 +73,16 @@ end = Make(struct
     | None, None -> None
   end r
 
-  let mul (m1, r1) (m2, r2) = match m1, m2 with
-    | Fin, Fin -> Fin, inter r1 r2
-    | Inv, Inv -> Inv, union r1 r2
-    | Fin, Inv -> Fin, diff  r1 r2
-    | Inv, Fin -> Fin, diff  r2 r1
-  let add (m1, r1) (m2, r2) = match m1, m2 with
-    | Fin, Fin -> Fin, symdiff r1 r2
-    | Inv, Inv -> Fin, symdiff r1 r2
-    | Fin, Inv -> Inv, diff    r1 r2
-    | Inv, Fin -> Inv, diff    r2 r1
+  let mul (m1, r1) (m2, r2) = match m1, m2 with  (* union *)
+    | Fin, Fin -> Fin, union r1 r2
+    | Inv, Inv -> Inv, inter r1 r2
+    | Fin, Inv -> Inv, diff  r2 r1
+    | Inv, Fin -> Inv, diff  r1 r2
+  let add (m1, r1) (m2, r2) = match m1, m2 with  (* xnor *)
+    | Fin, Fin -> Inv, symdiff r1 r2
+    | Inv, Inv -> Inv, symdiff r1 r2
+    | Fin, Inv -> Fin, symdiff r1 r2
+    | Inv, Fin -> Fin, symdiff r1 r2
 
   let to_string (mode, d) = 
     let body = IO.output_string () in

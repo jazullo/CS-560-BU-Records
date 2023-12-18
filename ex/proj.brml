@@ -1,3 +1,6 @@
 def union_ex r1 r2 = (r1 | r2).x
 
+def tst1 = union_ex ({x = 0}, {})
+def tst2 = union_ex ({}, {x = 0})
+
 def main = 0

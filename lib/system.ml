@@ -27,7 +27,7 @@ let _1 = T3.first
 let _2 = T3.second
 let _3 = T3.third
 
-let union_t l r = Free.(add_t l (add_t r (mul_t l r)))
+let inter_t l r = Free.(add_t l (add_t r (mul_t l r)))
 
 let rec infer ctx (_e, _sp, _t) = match _e with
   | Ternary (e1, e2, e3) -> 
@@ -55,15 +55,15 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     infer ctx e;
     u "Logic op expects bool arg" (_2 e) (_3 e) (uref (MLit MBool));
     u "Logic op expects bool result" _sp _t (uref (MLit MBool))
-  | Record (e1, Concatenate, e2) -> 
+  | Record (e1, Intersect, e2) -> 
     infer ctx e1; infer ctx e2;
     let l = Free.fresh () in
     let r = Free.fresh () in
     u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
     u "Record op expects rec right arg" (_2 e2) (_3 e2) (uref (TRec r));
     u "Union of records is not compatable with expected result" _sp _t
-      (uref (TRec (union_t l r)))
-  | Record (e1, Intersect, e2) -> 
+      (uref (TRec (inter_t l r)))
+  | Record (e1, Concatenate, e2) -> 
     infer ctx e1; infer ctx e2;
     let l = Free.fresh () in
     let r = Free.fresh () in
@@ -76,7 +76,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     let a = Free.fresh () in  (* rest of the record *)
     let v = fresh () in  (* associated value *)
     u "Projection expects a record with the required field" (_2 e) (_3 e) @@
-      uref (TRec (union_t a (Free.uconst (Fin, Dict.singleton s v))));
+      uref (TRec (Free.mul_t a (Free.uconst (Fin, Dict.singleton s v))));
     u "Unexpected result type from projection" _sp _t v
   
   | Binding (s, ps, e1, e2) -> 
