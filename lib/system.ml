@@ -33,8 +33,8 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | Ternary (e1, e2, e3) -> 
     infer ctx e1; infer ctx e2; infer ctx e3;
     u "Ternary condition expects a bool" (_2 e1) (_3 e1) (uref (MLit MBool));
-    u "Ternary branches expect the same type" (_2 e1) (_3 e2) _t;
-    u "Ternary branches expect the same type" (_2 e1) (_3 e3) _t
+    u "Ternary branches expect the same type" (_2 e1) (_3 e2) (_3 e3);
+    u "Unexpected result from ternary" (_2 e1) (_3 e2) _t
   | Apply (e, es) -> apply_many ctx _t e es
   | Arithmetic (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;
