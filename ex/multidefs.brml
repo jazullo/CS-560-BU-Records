@@ -1,0 +1,4 @@
+def f = 0
+def g = 1
+def h = 2
+def main = 3

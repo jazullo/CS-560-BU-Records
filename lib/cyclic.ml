@@ -39,7 +39,7 @@ let insert k v s =
     | T (color, a, y, b) -> 
       match[@warning "-8"] Stdlib.compare k (first y) with
       | -1 -> balance (T (color, ins a, y, b))
-      | 0 -> T (R, E, (k, v, s'), E)  (* replace on reinsertion *)
+      | 0 -> T (color, a, (k, v, s'), b)  (* replace on reinsertion *)
       | 1 -> balance (T (color, a, y, ins b))
   and s' = lazy (blacken (ins s)) in
   force s'
