@@ -50,9 +50,9 @@ rule token = parse
   | "else" {ELSE}
   | "end" {END}
 
-  | id as x {ID x}
-  | lit as x {LIT (int_of_string x)}
   | "true" {TRUE}
   | "false" {FALSE}
+  | id as x {ID x}
+  | lit as x {LIT (int_of_string x)}
 
   | _ as s {failwith (Printf.sprintf "Unexpected character %c" s)}
