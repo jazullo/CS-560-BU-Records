@@ -37,7 +37,7 @@ and Free : sig  (* Boolean unifier for free boolean rings *)
   val pretty_anf : 'a BatInnerIO.output -> t -> unit
   val print_anf : t -> unit
 end = Make(struct
-  (* Infinite Free Boolean Rings *)
+  (* Infinite Boolean Rings (Free BRs of a countably infinite set) *)
 (* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
    Inv: Dict is complemented (the tags of the record are _all other strings_ ) *)
   type t = mode * S.t Dict.t
