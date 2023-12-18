@@ -22,11 +22,11 @@ module rec S : sig
 
 end = S
 
-and Free : sig  (* Boolean unifier for free boolean rings *)
+and Free : sig  (* Boolean unifier for infinite boolean rings *)
   type t = _t uref
   and _t = 
     | Var of int
-    | Expr of ((mode * S.t Dict.t) * t list) list  (* FBRs implemented as dicts *)
+    | Expr of ((mode * S.t Dict.t) * t list) list  (* as dicts with complement flag *)
   
   val unify : t -> t -> unit
   val simplify : _t -> _t
