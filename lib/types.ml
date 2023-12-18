@@ -162,7 +162,7 @@ end = struct
 end
 
 and Show : sig
-  val print_ty : 'a BatInnerIO.output -> S._t uref -> unit
+  val print_ty : 'a BatInnerIO.output -> S.t -> unit
 end = struct
 
   open Printf
