@@ -1,0 +1,6 @@
+def proj_x r = r.x
+
+def r1 = {x = 0, y = 1}
+def r2 = r1.x
+
+def main = 0

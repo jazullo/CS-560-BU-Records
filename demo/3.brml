@@ -1,0 +1,5 @@
+def union x y = x | y
+
+def result = union ({x = 0}, {y = 1})
+
+def main = 0

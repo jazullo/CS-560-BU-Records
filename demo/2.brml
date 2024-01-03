@@ -1,0 +1,5 @@
+def add_x r = r | {x = 0}
+
+def add_x_as r v = r | {x = v}
+
+def main = 0
