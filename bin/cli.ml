@@ -14,7 +14,7 @@ let default_opt var const = O.{
 
 let op = 
   P.make
-    ~prog:"Prowl Interpreter"
+    ~prog:"The Boisterous BRML Typechecker"
     ()
 
 let flag help long_name = 
