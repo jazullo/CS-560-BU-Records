@@ -74,9 +74,11 @@ module Make(C : Constant) = struct
       newterms @ expr_acc
     ) [] e
   
+  let compare_with f x y = compare (f x) (f y)
+
   let elim = 
-    List.map (Tuple2.map2 (List.sort_uniq compare))
-    %> List.sort (fun s t -> compare (snd s) (snd t))
+    List.map (Tuple2.map2 (List.sort_uniq (compare_with uget)))
+    %> List.sort (compare_with snd)
     %> List.fold_left (function
       | [] -> List.singleton
       | (c, t) :: ts as acc -> fun (const, vars as term) -> 
