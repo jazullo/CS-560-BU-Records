@@ -99,18 +99,18 @@ module Make(C : Constant) = struct
     | coeff, [] when C.is_one coeff -> fprintf out "%s" C.(to_string one)
     | coeff, [] -> fprintf out "%s" (C.to_string coeff)
     | coeff, v :: vars when C.is_one coeff -> 
-      fprintf out "[%d]" (getvar v);
-      List.iter (getvar %> fprintf out "|[%d]") vars
+      fprintf out "b%d" (getvar v);
+      List.iter (getvar %> fprintf out "|b%d") vars
     | coeff, vars -> 
       fprintf out "%s" (C.to_string coeff);
-      List.iter (getvar %> fprintf out "|[%d]") vars
+      List.iter (getvar %> fprintf out "|b%d") vars
 
   let pretty_anf out = uget %> map_expr simp %> function
-    | Var (_, i) -> fprintf out "[%d]" i
+    | Var (_, i) -> fprintf out "b%d" i
     | Expr [] -> fprintf out "%s" C.(to_string zero)
     | Expr (t :: ts) -> 
       pretty_term_anf out t;
-      List.iter (fun x -> fprintf out " <+> "; pretty_term_anf out x) ts
+      List.iter (fun x -> fprintf out " + "; pretty_term_anf out x) ts
 
   let string_anf u = 
     let out = IO.output_string () in
