@@ -3,7 +3,7 @@
 
 open! Batteries
 open! Brml
-open! Interpreter
+(* open! Interpreter *)
 open! Ast
 open Printf
 open Cli
@@ -15,7 +15,7 @@ let parse ch =
 
 let check fname = 
   let ast = parse (File.open_in fname) in
-  System.infer_defs Cyclic.empty ast
+  J.infer_defs Cyclic.empty ast
 
 let print_ctx ctx = 
   Cyclic.to_list ctx |> List.iter @@ fun (name, (ty, _)) -> 
@@ -27,9 +27,9 @@ let interpret = flags "interpret sources" "interpret" 'i'
 
 let () = match P.parse_argv op with
   | [] | _ :: _ :: _ -> P.usage op ()
-  | [fname] -> 
-    if O.get interpret then 
+  | [fname] -> print_ctx (check fname)
+    (* if O.get interpret then 
       match interpret_defs (parse (File.open_in fname)) with
       | IntVal i -> print_endline (string_of_int i)
       | _ -> assert false
-    else print_ctx (check fname)
+    else print_ctx (check fname) *)

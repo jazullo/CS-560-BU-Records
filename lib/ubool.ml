@@ -20,19 +20,19 @@ module Make(C : Constant) = struct
   
   type t = _t uref
   and _t = 
-    | Var of int
+    | Var of int * int  (* level, uid *)
     | Expr of (C.t * t list) list
   
   let one = [C.one, []]
   let const c = [c, []]
   let var v = [C.one, [v]]
   
-  let uvar i = uref (Var i)
+  let uvar lvl i = uref (Var (lvl, i))
   let uexpr e = uref (Expr e)
   let uconst c = uref (Expr (const c))
-  let fresh () = uvar (unique ())
+  let fresh () = uvar !Common.level (unique ())
   let getvar u = 
-    let[@warning "-8"] (Var i) = uget u in i
+    let[@warning "-8"] (Var (_, i)) = uget u in i
   let getexpr u = match uget u with
     | Expr e -> e
     | Var _ -> var u
@@ -61,7 +61,7 @@ module Make(C : Constant) = struct
     | Var _, Var _ -> uexpr [C.one, [u; v]]
   
   let map_expr f = function
-    | Var i -> Var i
+    | Var _ as v -> v
     | Expr e -> Expr (f e)
   
   let upd_expr f x = uset x (f (uget x)); x
@@ -75,7 +75,7 @@ module Make(C : Constant) = struct
     ) [] e
   
   let compare_with f x y = compare (f x) (f y)
-
+  
   let elim = 
     List.map (Tuple2.map2 (List.sort_uniq (compare_with uget)))
     %> List.sort (compare_with snd)
@@ -96,17 +96,21 @@ module Make(C : Constant) = struct
   open Printf
 
   let pretty_term_anf out = function
-    | coeff, [] when C.is_one coeff -> fprintf out "%d" 1
+    | coeff, [] when C.is_one coeff -> fprintf out "%s" C.(to_string one)
+    | coeff, [] -> fprintf out "%s" (C.to_string coeff)
+    | coeff, v :: vars when C.is_one coeff -> 
+      fprintf out "[%d]" (getvar v);
+      List.iter (getvar %> fprintf out "|[%d]") vars
     | coeff, vars -> 
-      if not (C.is_one coeff) then fprintf out "%s" (C.to_string coeff);
-      List.iter (getvar %> fprintf out "[%d]") vars
+      fprintf out "%s" (C.to_string coeff);
+      List.iter (getvar %> fprintf out "|[%d]") vars
 
   let pretty_anf out = uget %> map_expr simp %> function
-    | Var i -> fprintf out "[%d]" i
-    | Expr [] -> fprintf out "%d" 0
+    | Var (_, i) -> fprintf out "[%d]" i
+    | Expr [] -> fprintf out "%s" C.(to_string zero)
     | Expr (t :: ts) -> 
       pretty_term_anf out t;
-      List.iter (fun x -> fprintf out " + "; pretty_term_anf out x) ts
+      List.iter (fun x -> fprintf out " <+> "; pretty_term_anf out x) ts
 
   let string_anf u = 
     let out = IO.output_string () in
@@ -147,8 +151,6 @@ module Make(C : Constant) = struct
       let u = select_var e in
       let t1, t2 = factor u e in
       solve (mul t2 (one @ t1));
-      (* printf "Subbing [%d] |-> " (getvar u);
-      print_anf (uexpr (simp (t2 @ mul (var (fresh ())) (one @ t1)))); *)
       uset u (Expr (simp (t2 @ mul (var (fresh ())) (one @ t1))))
   
   let unify r = unite ~sel:(curry @@ function

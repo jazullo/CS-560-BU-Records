@@ -3,6 +3,10 @@
   open! Lexing
 
   open Parse
+
+  let last = ref false
+  let que () = last := true
+  let deq () = if !last then (last := false; decr Common.level)
 }
 
 let whitespace = ' '+ | '\t'
@@ -11,18 +15,17 @@ let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '0'-'9']*
 let lit = ['0'-'9']+
 
 rule token = parse
-  | eof {EOF}
-  | "$" {EOF}
-  | whitespace {token lexbuf}
-  | eol {new_line lexbuf; token lexbuf}
+  | eof {deq (); EOF}
+  | whitespace {deq (); token lexbuf}
+  | eol {deq (); new_line lexbuf; token lexbuf}
 
-  | "(" {LPAREN}
+  | "(" {deq (); LPAREN}
   | ")" {RPAREN}
-  | "{" {LBRACE}
+  | "{" {deq (); LBRACE}
   | "}" {RBRACE}
   | "," {COMMA}
   | "." {PERIOD}
-  | "\\" {BACKSLASH}
+  | "fun" {FUN}
   | "->" {ARROW}
 
   | "+" {ADD}
@@ -43,12 +46,11 @@ rule token = parse
   | ">=" {GE}
 
   | "def" {DEF}
-  | "let" {LET}
-  | "in" {IN}
+  | "let" {incr Common.level; LET}
+  | "in" {que (); IN}
   | "if" {IF}
   | "then" {THEN}
   | "else" {ELSE}
-  | "end" {END}
 
   | "true" {TRUE}
   | "false" {FALSE}

@@ -1,4 +1,0 @@
-def map_second f p = {
-  first = p.first,
-  second = f(p.second)
-}

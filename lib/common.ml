@@ -12,3 +12,5 @@ let print_span out loc =
   if l1 = l2 then fprintf out "Line %d, " l1
   else fprintf out "Lines %d-%d, " l1 l2;
   fprintf out "Columns %d-%d\n" c1 c2
+
+let level = ref 0

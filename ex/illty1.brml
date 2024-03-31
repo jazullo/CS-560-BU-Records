@@ -1,3 +1,0 @@
-def r = {x=1, y=2}
-def f u = u.z
-def main = f (r ())

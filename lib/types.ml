@@ -3,15 +3,19 @@ open Uref
 open Ubool
 
 module Dict = Map.Make(String)
+module Universe = Set.Make(Int)
 
 type mode = Fin | Inv  (* finite or inverted *)
+type gen = 
+  | Mono
+  | Poly of Universe.t
 
 module rec S : sig
 
   (* internal representation of types *)
   type t = _t uref
   and _t = 
-    | MVar of int   (* polymorphic type variables *)
+    | MVar of int * int   (* polymorphic type variables *)
     | MLit of mlit
     | MFun of t * t
     | TRec of recty  (* polymorphic records *)
@@ -25,7 +29,7 @@ end = S
 and Free : sig  (* Boolean unifier for infinite boolean rings *)
   type t = _t uref
   and _t = 
-    | Var of int
+    | Var of int * int
     | Expr of ((mode * S.t Dict.t) * t list) list  (* as dicts with complement flag *)
   
   val unify : t -> t -> unit
@@ -42,15 +46,15 @@ end = Make(struct
    Inv: Dict is complemented (the tags of the record are _all other strings_ ) *)
   type t = mode * S.t Dict.t
 
-  let zero = Fin, Dict.empty
-  let one  = Inv, Dict.empty
+  let zero = Inv, Dict.empty  (* all of these are flipped in this branch *)
+  let one  = Fin, Dict.empty
 
   let is_zero = function
-    | Fin, d -> Dict.is_empty d
+    | Inv, d -> Dict.is_empty d
     | _ -> false
   
   let is_one = function
-    | Inv, d -> Dict.is_empty d
+    | Fin, d -> Dict.is_empty d
     | _ -> false
 
   (* important helpers *)
@@ -64,25 +68,25 @@ end = Make(struct
   let union r = Dict.union (fun _ r1 r2 -> Some (usnd r1 r2)) r
   let diff r = Dict.merge begin fun _ r1 r2 -> match r1, r2 with
     | Some _ as r3, None -> r3
-    | Some c1, Some c2 -> Unify.(c1 =? c2); None
+    | Some _, Some _ -> (* Unify.(c1 =? c2); *) None
     | None, None | None, (Some _) -> None
   end r
   let symdiff r = Dict.merge begin fun _ r1 r2 -> match r1, r2 with
     | Some _ as r3, None | None, (Some _ as r3) -> r3
-    | Some c1, Some c2 -> Unify.(c1 =? c2); None
+    | Some _, Some _ -> (* Unify.(c1 =? c2); *) None
     | None, None -> None
   end r
 
-  let mul (m1, r1) (m2, r2) = match m1, m2 with
-    | Fin, Fin -> Fin, inter r1 r2
-    | Inv, Inv -> Inv, union r1 r2
-    | Fin, Inv -> Fin, diff  r1 r2
-    | Inv, Fin -> Fin, diff  r2 r1
-  let add (m1, r1) (m2, r2) = match m1, m2 with
-    | Fin, Fin -> Fin, symdiff r1 r2
-    | Inv, Inv -> Fin, symdiff r1 r2
-    | Fin, Inv -> Inv, symdiff r1 r2
-    | Inv, Fin -> Inv, symdiff r1 r2
+  let mul (m1, r1) (m2, r2) = match m1, m2 with  (* union *)
+    | Fin, Fin -> Fin, union r1 r2
+    | Inv, Inv -> Inv, inter r1 r2
+    | Fin, Inv -> Inv, diff  r2 r1
+    | Inv, Fin -> Inv, diff  r1 r2
+  let add (m1, r1) (m2, r2) = match m1, m2 with  (* xnor *)
+    | Fin, Fin -> Inv, symdiff r1 r2
+    | Inv, Inv -> Inv, symdiff r1 r2
+    | Fin, Inv -> Fin, symdiff r1 r2
+    | Inv, Fin -> Fin, symdiff r1 r2
 
   let to_string (mode, d) = 
     let body = IO.output_string () in
@@ -98,15 +102,16 @@ end)
 and Unify : sig
   val (=?) : S.t -> S.t -> unit
   val simplify : Free.t -> unit
-  val generalize : S.t -> S.t
+  val generalize : Universe.t -> S.t -> S.t
+  val bound : S.t -> Universe.t
 end = struct
 
   let simplify r = uset r (Free.simplify (uget r))
 
   (* syntactic unification *)
   let rec (=?) r = r |> unite ~sel:begin curry @@ function
-    | S.MVar v as w, S.MVar u when v = u -> w
-    | S.MVar v, u | u, S.MVar v -> occurs v u; u
+    | S.MVar (n, v), S.MVar (m, u) when v = u -> S.MVar (min n m, u)
+    | S.MVar (n, v), u | u, S.MVar (n, v) -> occurs n v u
     | S.MLit _ as u, v when u = v -> u
     | MFun (i1, o1) as f, MFun (i2, o2) -> 
       i1 =? i2;
@@ -114,40 +119,45 @@ end = struct
       f
     | TRec r1 as r, TRec r2 -> 
       Free.unify r1 r2;
-      (* simplify r1; *)
       r
     | _ -> raise (Common.UnifError "Cannot unify distinct concrete types.")
   end
 
-  and occurs v = function
-    | S.MVar u when v = u -> 
-      raise (Common.UnifError "Cannot unify variable with term that contains it.")
-    | MFun (i, o) -> occurs v (uget i); occurs v (uget o)
+  and occurs n v = function
+    | S.MVar (_, u) when v = u -> 
+      raise (Common.UnifError "Cannot unify variable with term that contains it.") 
+    | S.MVar (m, u) -> S.MVar (min n m, u)
+    | MFun (i, o) -> 
+      uset i (occurs n v (uget i)); 
+      uset o (occurs n v (uget o));
+      MFun (i, o)
     | TRec r -> 
       simplify r;
       begin match uget r with
       | Var _ -> ()
       | Expr bs -> 
-        List.iter (fst %> snd %> Dict.iter (fun _ -> uget %> occurs v)) bs
-      end
-    | _ -> ()
+        List.iter (fst %> snd %> Dict.iter (fun _ x -> uset x (occurs n v (uget x)))) bs
+      end; 
+      TRec r
+    | r -> r
   
-  let generalize t0 = 
+  let generalize w t0 = 
     let tbl = Hashtbl.create 16 in
     let tbl_rec = Hashtbl.create 16 in
     let cache x = 
       Hashtbl.find_option tbl x |> Option.default_delayed @@ fun () -> 
-        let nu = uref @@ S.MVar (unique ()) in
+        let nu = uref @@ S.MVar (!Common.level, unique ()) in
         Hashtbl.add tbl x nu;
         nu in
     let cache_rec x = 
       Hashtbl.find_option tbl_rec x |> Option.default_delayed @@ fun () -> 
-        let nu = uref @@ Free.Var (unique ()) in
+        let nu = uref @@ Free.Var (!Common.level, unique ()) in
         Hashtbl.add tbl_rec x nu;
         nu in
     let rec gen t = 
       match uget t with
-      | S.MVar i -> cache i
+      | S.MVar (_, i) when Universe.mem i w -> t
+      | S.MVar (_, i) -> cache i
       | MLit _ -> t
       | MFun (i, o) -> uref (S.MFun (gen i, gen o))
       | TRec r -> uref (S.TRec (gen_rec r))
@@ -155,9 +165,24 @@ end = struct
       let gen_term ((mode, coeff), vars) = 
         (mode, Dict.map gen coeff), List.map gen_rec vars in
       match uget r with
-      | Free.Var i -> cache_rec i
+      | Free.Var (_, i) when Universe.mem i w -> r
+      | Free.Var (_, i) -> cache_rec i
       | Expr e -> uref @@ Free.Expr (List.map gen_term e) in
     gen t0
+  
+  let rec bound t0 = match uget t0 with
+    | S.MVar (m, i) when m <= !Common.level -> Universe.singleton i
+    | MVar _ | MLit _ -> Universe.empty
+    | MFun (i, o) -> Universe.union (bound i) (bound o)
+    | TRec r -> 
+      begin match uget r with
+        | Var (m, i) when m <= !Common.level -> Universe.singleton i
+        | Var _ -> Universe.empty
+        | Expr bs -> 
+          List.fold_left (fun a e -> Dict.fold (fun _ t1 -> 
+            Universe.union (bound t1)
+          ) (snd (fst e)) a) Universe.empty bs
+      end
   
 end
 
@@ -176,7 +201,7 @@ end = struct
     | e -> print__t out e
   and print_t out = uget %> print__t out
   and print__t out = function
-    | S.MVar i -> fprintf out "a%d" i
+    | S.MVar (_, i) -> fprintf out "a%d" i
     | MLit MInt -> fprintf out "int"
     | MLit MBool -> fprintf out "bool"
     | MFun _ as e -> 
