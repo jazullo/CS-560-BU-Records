@@ -1,4 +1,5 @@
 %{
+  [@@@warning "-5"]  (* let _ = _menhir_action_40 () in  ??? *)
   open! Batteries
   open! Uref
   open! Ast
@@ -36,7 +37,7 @@ program:
   | def program {$1 :: $2}
   | {[]}
 
-def: DEF ID pat* EQ expr {(($2, $3, $5), $loc, fresh ())}
+def: DEF ID pat_seq EQ expr {(($2, ($3) ($5)), $loc, fresh ())}
 
 expr: 
   | IF expr THEN expr ELSE expr {(Ternary ($2, $4, $6), $loc, fresh ())}
@@ -55,12 +56,12 @@ expr:
   | expr GE expr {(Comparative ($1, Ge, $3), $loc, fresh ())}
   | expr CONCAT expr {(Record ($1, Concatenate, $3), $loc, fresh ())}
   | expr INTERSECT expr {(Record ($1, Intersect, $3), $loc, fresh ())}
-  | LET ID pat* EQ expr IN expr {(Binding ($2, $3, $5, fresh (), $7), $loc, fresh ())}
-  | FUN pat* ARROW expr {(Abstract ($2, $4), $loc, fresh ())}
+  | LET ID pat_seq EQ expr IN expr {(Binding ($2, ($3) ($5), fresh (), $7), $loc, fresh ())}
+  | FUN pat_seq ARROW expr {($2) ($4)}
   | expr2 {$1}
 
 expr2: 
-  | expr3 expr3+ {(Apply ($1, $2), $loc, fresh ())}
+  | expr2 expr3 {(Apply ($1, $2), $loc, fresh ())}
   | expr3 {$1}
 
 expr3:
@@ -78,3 +79,7 @@ pat:
   | pat CONCAT pat {CatPat ($1, $3), $loc, fresh ()}
   | LBRACE separated_list(COMMA, separated_pair(ID, EQ, pat)) RBRACE {RecPat $2, $loc, fresh ()}
   | LPAREN pat RPAREN {$2}
+
+pat_seq: 
+  | pat pat_seq {fun x -> Abstract ($1, x), $loc, fresh ()}
+  | {fun x -> x}

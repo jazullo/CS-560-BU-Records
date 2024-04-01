@@ -10,15 +10,15 @@ type rec_op = Concatenate | Intersect
 type expr = _expr * span * Types.S.t
 and _expr = 
   | Ternary of expr * expr * expr
-  | Apply of expr * expr list
+  | Apply of expr * expr
   | Arithmetic of expr * arith_op * expr
   | Comparative of expr * cmp_op * expr
   | Logical of expr * logic_op * expr
   | Not of expr
   | Record of expr * rec_op * expr
   | Project of expr * string
-  | Binding of string * pat list * expr * Types.S.t * expr
-  | Abstract of pat list * expr
+  | Binding of string * expr * Types.S.t * expr
+  | Abstract of pat * expr
   | RecordCon of (string * expr) list
   | IntLit of int
   | BoolLit of bool
@@ -31,4 +31,4 @@ and _pat =
   | CatPat of pat * pat
 
 type def = _def * span * Types.S.t
-and _def = string * pat list * expr
+and _def = string * expr
