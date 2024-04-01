@@ -14,6 +14,7 @@ module type Constant = sig
   val is_zero : t -> bool
   val is_one : t -> bool
   val to_string : t -> string
+  val deepcopy : t -> t
 end
 
 module Make(C : Constant) = struct
@@ -99,18 +100,18 @@ module Make(C : Constant) = struct
     | coeff, [] when C.is_one coeff -> fprintf out "%s" C.(to_string one)
     | coeff, [] -> fprintf out "%s" (C.to_string coeff)
     | coeff, v :: vars when C.is_one coeff -> 
-      fprintf out "b%d" (getvar v);
-      List.iter (getvar %> fprintf out "|b%d") vars
+      fprintf out "[%d]" (getvar v);
+      List.iter (getvar %> fprintf out "|[%d]") vars
     | coeff, vars -> 
       fprintf out "%s" (C.to_string coeff);
-      List.iter (getvar %> fprintf out "|b%d") vars
+      List.iter (getvar %> fprintf out "|[%d]") vars
 
   let pretty_anf out = uget %> map_expr simp %> function
-    | Var (_, i) -> fprintf out "b%d" i
+    | Var (_, i) -> fprintf out "[%d]" i
     | Expr [] -> fprintf out "%s" C.(to_string zero)
     | Expr (t :: ts) -> 
       pretty_term_anf out t;
-      List.iter (fun x -> fprintf out " + "; pretty_term_anf out x) ts
+      List.iter (fun x -> fprintf out " <+> "; pretty_term_anf out x) ts
 
   let string_anf u = 
     let out = IO.output_string () in
@@ -118,6 +119,10 @@ module Make(C : Constant) = struct
     IO.close_out out
   
   let print_anf u = print_endline (string_anf u)
+
+  let rec deepcopy e = uref @@ match uget e with
+    | Var (n, v) -> Var (n, v)
+    | Expr ts -> Expr (List.map (Tuple2.map C.deepcopy (List.map deepcopy)) ts)
   
   let[@warning "-8"] smallterm (x :: xs) = 
     List.fold_left (fun t t' -> 

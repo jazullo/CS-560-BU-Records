@@ -40,6 +40,7 @@ and Free : sig  (* Boolean unifier for infinite boolean rings *)
   val uconst : mode * S.t Dict.t -> t
   val pretty_anf : 'a BatInnerIO.output -> t -> unit
   val print_anf : t -> unit
+  val deepcopy : t -> t
 end = Make(struct
   (* Infinite Boolean Rings (Free BRs of a countably infinite set) *)
 (* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
@@ -97,6 +98,8 @@ end = Make(struct
     | Fin -> ""
     | Inv -> "!"
     ) ^ IO.close_out body
+  
+  let deepcopy = Tuple2.map2 (Dict.map Unify.deepcopy)
 end)
 
 and Unify : sig
@@ -104,6 +107,7 @@ and Unify : sig
   val simplify : Free.t -> unit
   val generalize : Universe.t -> S.t -> S.t
   val bound : S.t -> Universe.t
+  val deepcopy : S.t -> S.t
 end = struct
 
   let simplify r = uset r (Free.simplify (uget r))
@@ -120,7 +124,9 @@ end = struct
     | TRec r1 as r, TRec r2 -> 
       Free.unify r1 r2;
       r
-    | _ -> raise (Common.UnifError "Cannot unify distinct concrete types.")
+    | l, r -> raise (Common.UnifError (Printf.sprintf
+      "Cannot unify distinct concrete types [%s] and [%s]."
+      (Show.ty (uref l)) (Show.ty (uref r))))
   end
 
   and occurs n v = function
@@ -184,10 +190,17 @@ end = struct
           ) (snd (fst e)) a) Universe.empty bs
       end
   
+  let rec deepcopy t0 = uref @@ match uget t0 with
+    | S.MLit x -> S.MLit x
+    | MVar (n, v) -> S.MVar (n, v)
+    | MFun (i, o) -> S.MFun (deepcopy i, deepcopy o)
+    | TRec r -> TRec (Free.deepcopy r)
+  
 end
 
 and Show : sig
   val print_ty : 'a BatInnerIO.output -> S.t -> unit
+  val ty : S.t -> string
 end = struct
 
   open Printf
@@ -217,5 +230,10 @@ end = struct
     fprintf out ">"
   
   let print_ty = print_t_fst
+
+  let ty ty = 
+    let s = IO.output_string () in
+    print_ty s ty;
+    IO.close_out s
 
 end

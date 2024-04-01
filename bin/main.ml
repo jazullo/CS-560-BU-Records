@@ -27,9 +27,9 @@ let interpret = flags "interpret sources" "interpret" 'i'
 
 let () = match P.parse_argv op with
   | [] | _ :: _ :: _ -> P.usage op ()
-  | [fname] -> print_ctx (check fname)
-    (* if O.get interpret then 
-      match interpret_defs (parse (File.open_in fname)) with
-      | IntVal i -> print_endline (string_of_int i)
-      | _ -> assert false
-    else print_ctx (check fname) *)
+  | [fname] -> print_ctx (check fname);
+    if O.get interpret then 
+      match Cyclic.find_rec_opt "main" (Eval.eval Cyclic.empty (parse (File.open_in fname))) with
+      | Some (v, _) -> Eval.print_val v
+      | None -> failwith "no main function!"
+    else print_ctx (check fname)

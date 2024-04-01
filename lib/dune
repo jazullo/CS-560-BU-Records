@@ -1,6 +1,7 @@
 (ocamllex lex)
 (menhir
- (modules parse))
+ (modules parse)
+ (flags --explain --strict))
 (library
  (name brml)
  (libraries batteries))

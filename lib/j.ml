@@ -51,7 +51,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     u "Logic op expects bool left arg" (_2 e1) (_3 e1) (uref (MLit MBool));
     u "Logic op expects bool right arg" (_2 e2) (_3 e2) (uref (MLit MBool));
     u "Logic op expects bool result" _sp _t (uref (MLit MBool))
-  | LogicalUnary (_, e) ->
+  | Not e ->
     infer ctx e;
     u "Logic op expects bool arg" (_2 e) (_3 e) (uref (MLit MBool));
     u "Logic op expects bool result" _sp _t (uref (MLit MBool))
@@ -79,9 +79,8 @@ let rec infer ctx (_e, _sp, _t) = match _e with
       uref (TRec (Free.mul_t a (Free.uconst (Fin, Dict.singleton s v))));
     u "Unexpected result type from projection" _sp _t v
   
-  | Binding (s, ps, e1, e2) -> 
+  | Binding (s, ps, e1, a, e2) -> 
     incr Common.level; 
-    let a = fresh () in
     abstract_many ctx a e1 ps; decr Common.level; 
     let ctx' = Cyclic.insert s (a, Poly (bound (_3 e1))) ctx in
     infer ctx' e2; 
@@ -116,25 +115,24 @@ and abstract_many ctx t0 e1 ps =
   u "Unexpected function type" (_2 e1) t0 @@
     List.fold_right (fun x acc -> uref (MFun (x, acc))) t_args (_3 e1)
 
-and process_pat ctx (_p, _sp) = match _p with
+and process_pat ctx (_p, _sp, v) = match _p with
   | Param s -> 
-    let v = fresh () in
     Cyclic.insert s (v, Mono) ctx, v
-  | IntPat _ -> ctx, uref (MLit MInt)
-  | BoolPat _ -> ctx, uref (MLit MBool)
   | RecPat xs -> 
     let ctx', consts = List.fold_left (fun (c, m) (s, p) -> 
         let c', t = process_pat c p in
         c', Dict.add s t m
       ) (ctx, Dict.empty) xs in
-    ctx', uref (TRec Free.(uconst (Fin, consts)))
+    uset v (TRec Free.(uconst (Fin, consts)));
+    ctx', v
   | CatPat (p1, p2) -> 
     let ctx', t1 = process_pat ctx p1 in
     let ctx'', t2 = process_pat ctx' p2 in
     let rho1, rho2 = Free.(fresh (), fresh ()) in
     u "Cat pattern expects rec left pat" _sp t1 (uref (TRec rho1));
     u "Cat pattern expects rec right pat" _sp t2 (uref (TRec rho2));
-    ctx'', uref (TRec (Free.mul_t rho1 rho2))
+    uset v (TRec (Free.mul_t rho1 rho2));
+    ctx'', v
 
 and pat_many ctx ps = 
   List.fold_left
@@ -142,8 +140,7 @@ and pat_many ctx ps =
     (ctx, []) ps
   |> T2.map2 List.rev
 
-let infer_defs ctx = List.fold_left (fun ctx' ((name, args, body), _) -> 
-  let a = fresh () in
+let infer_defs ctx = List.fold_left (fun ctx' ((name, args, body), _, a) -> 
   let ctx'' = Cyclic.insert name (a, Mono) ctx' in
   abstract_many ctx'' a body args;
   Cyclic.insert name (a, Poly Universe.empty) ctx''
