@@ -190,11 +190,7 @@ end = struct
           ) (snd (fst e)) a) Universe.empty bs
       end
   
-  let rec deepcopy t0 = uref @@ match uget t0 with
-    | S.MLit x -> S.MLit x
-    | MVar (n, v) -> S.MVar (n, v)
-    | MFun (i, o) -> S.MFun (deepcopy i, deepcopy o)
-    | TRec r -> TRec (Free.deepcopy r)
+  let deepcopy t0 = generalize Universe.empty t0
   
 end
 

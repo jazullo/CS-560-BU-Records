@@ -51,7 +51,7 @@ and print_expr out (_e, _, t) =
   | Not e -> fprintf out "!"; print_expr out e
   | Record (e1, op, e2) -> 
     print_expr out e1;
-    fprintf out " %s " (match op with Concatenate -> "&" | Intersect -> "|");
+    fprintf out " %s " (match op with Concatenate -> "|" | Intersect -> "&");
     print_expr out e2
   | Project (e, s) -> 
     print_expr out e;
@@ -135,5 +135,5 @@ let () = match P.parse_argv op with
       print_newline ();
       print_term_ctx ctx; 
       print_newline ();
-      print_prog stdout ((parse (File.open_in fname))); print_newline ();
+      print_prog stdout ast; print_newline ();
       exit 0

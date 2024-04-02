@@ -15,9 +15,15 @@ let rec deepcopy (_e, _sp, _t) = (match _e with
   | Record (e1, op, e2) -> Record (deepcopy e1, op, deepcopy e2)
   | Project (e, s) -> Project (deepcopy e, s)
   | Binding (s, e1, e2) -> Binding (s, deepcopy e1, deepcopy e2)
-  | Abstract (p, e) -> Abstract (p, deepcopy e)
+  | Abstract (p, e) -> Abstract (deepcopy_pat p, deepcopy e)
   | RecordCon r -> RecordCon (List.map (Tuple2.map2 deepcopy) r)
   | IntLit _ | BoolLit _ | Id _ -> _e
+), _sp, Unify.deepcopy _t
+
+and deepcopy_pat (_p, _sp, _t) = (match _p with
+  | RecPat fields -> RecPat (List.map (T2.map2 deepcopy_pat) fields)
+  | CatPat (p1, p2) -> CatPat (deepcopy_pat p1, deepcopy_pat p2)
+  | Param _ -> _p
 ), _sp, Unify.deepcopy _t
 
 type value = 
@@ -95,18 +101,19 @@ let rec (==>) (ctx : value Lazy.t Dict.t) (_e, _sp, _t) = match _e with
       | VInt _ | VClosure _ | VRec _ as v -> crash ctx (BadGuard (show_val v)) _sp
     end
   | Apply (e1, e2) -> 
-    (* get parameter type *)
-    let t_arg = match uget (_3 e1) with
-      | S.MFun (i, _) -> i
-      | _ -> crash ctx (ApplicationNonArrow (Show.ty (_3 e1))) _sp in
-    (* if param type > arg type, monomorphize *)
-    let e1 = 
-      if _3 e2 = t_arg then e1
-      else
-        let e0 = deepcopy e1 in
-        let open Unify in
-        (fun[@warning "-8"] (S.MFun (i, _)) -> i) (uget (_3 e0)) =? t_arg;
-        e0 in
+    (* monomorphize *)
+    (* let e1 = 
+      let e0 = deepcopy e1 in
+      let open Unify in
+
+      print_newline ();
+      print_endline "mono:";
+      Show.print_ty stdout (_3 e0);
+      print_newline ();
+      print_newline ();
+
+      (fun[@warning "-8"] (S.MFun (i, _)) -> i) (uget (_3 e0)) =? _3 e2;
+      e0 in *)
     (* evaluate applicand *)
     let (ctx', param, body) = match ctx ==> e1 with
       | VClosure (c, p, e, _) -> c, p, e
@@ -163,8 +170,23 @@ let rec (==>) (ctx : value Lazy.t Dict.t) (_e, _sp, _t) = match _e with
   | IntLit i -> VInt i
   | BoolLit b -> VBool b
   | Id s -> (match Dict.find_opt s ctx with
-    | Some lazy v -> v
+    | Some lazy v -> monomorph _t v
     | None -> failwith ("Unbound variable [" ^ s ^ "]."))
+
+and monomorph _t = function
+  | VClosure (c, p, e, t) -> 
+    let p = deepcopy_pat p in
+    let e = deepcopy e in
+    let t = Unify.deepcopy t in
+    Unify.(t =? _t);
+    begin match[@warning "-8"] uget _t with
+      | S.MFun (i, o) -> 
+        Unify.(_3 p =? i);
+        Unify.(_3 e =? o)
+    end;
+    VClosure (c, p, e, t)
+  | VRec fields -> VRec (Dict.map (monomorph _t) fields)
+  | VInt _ | VBool _ as v -> v
 
 and case ctx (p, _sp, _) = match p with
   | Param s -> fun v -> Dict.add s (lazy v) ctx
@@ -176,7 +198,8 @@ and case ctx (p, _sp, _) = match p with
     end
   | CatPat ((_p1, _, _t1 as p1), (_p2, _, _t2 as p2)) -> begin match uget _t1, uget _t2 with
       | S.TRec rho1, S.TRec rho2 -> 
-        concretize_rec rho1; concretize_rec rho2;
+        print_newline (); Show.print_ty stdout _t1; print_newline (); Show.print_ty stdout _t2; print_newline (); print_newline ();  (* DEBUG *)
+        concretize_rec rho1; concretize_rec rho2;  (* generalize first? *)
         begin match Free.simplify (uget rho1), Free.simplify (uget rho2) with
           | Var _, _ | _, Var _ -> failwith "poly record at runtime"
           | Expr [_, _ :: _], Expr [_, _] | Expr [_, _], Expr [_, _ :: _] -> 
