@@ -40,7 +40,6 @@ and Free : sig  (* Boolean unifier for infinite boolean rings *)
   val uconst : mode * S.t Dict.t -> t
   val pretty_anf : 'a BatInnerIO.output -> t -> unit
   val print_anf : t -> unit
-  val deepcopy : t -> t
 end = Make(struct
   (* Infinite Boolean Rings (Free BRs of a countably infinite set) *)
 (* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
@@ -98,16 +97,16 @@ end = Make(struct
     | Fin -> ""
     | Inv -> "!"
     ) ^ IO.close_out body
-  
-  let deepcopy = Tuple2.map2 (Dict.map Unify.deepcopy)
 end)
 
 and Unify : sig
   val (=?) : S.t -> S.t -> unit
   val simplify : Free.t -> unit
-  val generalize : Universe.t -> S.t -> S.t
+  val generalize : ?tbl:(int, S.t) Hashtbl.t -> ?tbl_rec:(int, Free.t) Hashtbl.t -> 
+    Universe.t -> S.t -> S.t
   val bound : S.t -> Universe.t
-  val deepcopy : S.t -> S.t
+  val deepcopy : (int, S.t) Hashtbl.t * (int, Free.t) Hashtbl.t -> S.t -> S.t
+  val mk_cache : unit -> ('a, 'b) Hashtbl.t * ('c, 'd) Hashtbl.t
 end = struct
 
   let simplify r = uset r (Free.simplify (uget r))
@@ -147,9 +146,9 @@ end = struct
       TRec r
     | r -> r
   
-  let generalize w t0 = 
-    let tbl = Hashtbl.create 16 in
-    let tbl_rec = Hashtbl.create 16 in
+  let mk_cache () = Hashtbl.create 16, Hashtbl.create 16
+  
+  let generalize ?(tbl=Hashtbl.create 16) ?(tbl_rec=Hashtbl.create 16) w t0 = 
     let cache x = 
       Hashtbl.find_option tbl x |> Option.default_delayed @@ fun () -> 
         let nu = uref @@ S.MVar (!Common.level, unique ()) in
@@ -190,7 +189,13 @@ end = struct
           ) (snd (fst e)) a) Universe.empty bs
       end
   
-  let deepcopy t0 = generalize Universe.empty t0
+  let deepcopy (tbl, tbl_rec) t0 = generalize ~tbl ~tbl_rec Universe.empty t0
+
+  (* let dc_helper x = Tuple2.map2 (Dict.map (Unify.deepcopy x))
+
+  let rec deepcopy_rec x e = uref @@ match uget e with
+    | Free.Var (n, v) -> Free.Var (n, v)
+    | Expr ts -> Expr (List.map (Tuple2.map (dc_helper x) (List.map (deepcopy_rec x))) ts) *)
   
 end
 

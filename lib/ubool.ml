@@ -14,7 +14,6 @@ module type Constant = sig
   val is_zero : t -> bool
   val is_one : t -> bool
   val to_string : t -> string
-  val deepcopy : t -> t
 end
 
 module Make(C : Constant) = struct
@@ -119,10 +118,6 @@ module Make(C : Constant) = struct
     IO.close_out out
   
   let print_anf u = print_endline (string_anf u)
-
-  let rec deepcopy e = uref @@ match uget e with
-    | Var (n, v) -> Var (n, v)
-    | Expr ts -> Expr (List.map (Tuple2.map C.deepcopy (List.map deepcopy)) ts)
   
   let[@warning "-8"] smallterm (x :: xs) = 
     List.fold_left (fun t t' -> 

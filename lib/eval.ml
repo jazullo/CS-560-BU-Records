@@ -5,26 +5,26 @@ open Ast
 open Types
 open! J
 
-let rec deepcopy (_e, _sp, _t) = (match _e with
-  | Ternary (e1, e2, e3) -> Ternary (deepcopy e1, deepcopy e2, deepcopy e3)
-  | Apply (e1, e2) -> Apply (deepcopy e1, deepcopy e2)
-  | Arithmetic (e1, op, e2) -> Arithmetic (deepcopy e1, op, deepcopy e2)
-  | Comparative (e1, op, e2) -> Comparative (deepcopy e1, op , deepcopy e2)
-  | Logical (e1, op, e2) -> Logical (deepcopy e1, op, deepcopy e2)
-  | Not e -> Not (deepcopy e)
-  | Record (e1, op, e2) -> Record (deepcopy e1, op, deepcopy e2)
-  | Project (e, s) -> Project (deepcopy e, s)
-  | Binding (s, e1, e2) -> Binding (s, deepcopy e1, deepcopy e2)
-  | Abstract (p, e) -> Abstract (deepcopy_pat p, deepcopy e)
-  | RecordCon r -> RecordCon (List.map (Tuple2.map2 deepcopy) r)
+let rec deepcopy x (_e, _sp, _t) = (match _e with
+  | Ternary (e1, e2, e3) -> Ternary (deepcopy x e1, deepcopy x e2, deepcopy x e3)
+  | Apply (e1, e2) -> Apply (deepcopy x e1, deepcopy x e2)
+  | Arithmetic (e1, op, e2) -> Arithmetic (deepcopy x e1, op, deepcopy x e2)
+  | Comparative (e1, op, e2) -> Comparative (deepcopy x e1, op , deepcopy x e2)
+  | Logical (e1, op, e2) -> Logical (deepcopy x e1, op, deepcopy x e2)
+  | Not e -> Not (deepcopy x e)
+  | Record (e1, op, e2) -> Record (deepcopy x e1, op, deepcopy x e2)
+  | Project (e, s) -> Project (deepcopy x e, s)
+  | Binding (s, e1, e2) -> Binding (s, deepcopy x e1, deepcopy x e2)
+  | Abstract (p, e) -> Abstract (deepcopy_pat x p, deepcopy x e)
+  | RecordCon r -> RecordCon (List.map (Tuple2.map2 (deepcopy x)) r)
   | IntLit _ | BoolLit _ | Id _ -> _e
-), _sp, Unify.deepcopy _t
+), _sp, Unify.deepcopy x _t
 
-and deepcopy_pat (_p, _sp, _t) = (match _p with
-  | RecPat fields -> RecPat (List.map (T2.map2 deepcopy_pat) fields)
-  | CatPat (p1, p2) -> CatPat (deepcopy_pat p1, deepcopy_pat p2)
+and deepcopy_pat x (_p, _sp, _t) = (match _p with
+  | RecPat fields -> RecPat (List.map (T2.map2 (deepcopy_pat x)) fields)
+  | CatPat (p1, p2) -> CatPat (deepcopy_pat x p1, deepcopy_pat x p2)
   | Param _ -> _p
-), _sp, Unify.deepcopy _t
+), _sp, Unify.deepcopy x _t
 
 type value = 
   | VInt of int
@@ -85,11 +85,13 @@ let print_err = let open Printf in function
 exception EvalErr of value Lazy.t Dict.t * eval_err_type * span
 let crash ctx err sp = raise (EvalErr (ctx, err, sp))
 
-let deepcopy_val = function       (* copy context? *)
-  | VClosure (c, ps, e, t) -> VClosure (c, ps, deepcopy e, Unify.deepcopy t)
+let deepcopy_val x = function       (* copy context? *)
+  | VClosure (c, ps, e, t) -> VClosure (c, ps, deepcopy x e, Unify.deepcopy x t)
   | v -> v
 
-let concretize_rec rho = match uget rho with
+let concretize_rec rho = 
+  Unify.simplify rho;
+  match uget rho with
   | Free.Var _ -> Free.unify rho (Free.uconst (Inv, Dict.empty))
   | Free.Expr e -> List.iter (snd %> List.iter (Free.unify (Free.uconst (Inv, Dict.empty)))) e
 
@@ -175,9 +177,10 @@ let rec (==>) (ctx : value Lazy.t Dict.t) (_e, _sp, _t) = match _e with
 
 and monomorph _t = function
   | VClosure (c, p, e, t) -> 
-    let p = deepcopy_pat p in
-    let e = deepcopy e in
-    let t = Unify.deepcopy t in
+    let x = Unify.mk_cache () in
+    let p = deepcopy_pat x p in
+    let e = deepcopy x e in
+    let t = Unify.deepcopy x t in
     Unify.(t =? _t);
     begin match[@warning "-8"] uget _t with
       | S.MFun (i, o) -> 
@@ -198,7 +201,6 @@ and case ctx (p, _sp, _) = match p with
     end
   | CatPat ((_p1, _, _t1 as p1), (_p2, _, _t2 as p2)) -> begin match uget _t1, uget _t2 with
       | S.TRec rho1, S.TRec rho2 -> 
-        print_newline (); Show.print_ty stdout _t1; print_newline (); Show.print_ty stdout _t2; print_newline (); print_newline ();  (* DEBUG *)
         concretize_rec rho1; concretize_rec rho2;  (* generalize first? *)
         begin match Free.simplify (uget rho1), Free.simplify (uget rho2) with
           | Var _, _ | _, Var _ -> failwith "poly record at runtime"
