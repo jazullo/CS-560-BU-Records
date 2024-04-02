@@ -51,7 +51,7 @@ and print_expr out (_e, _, t) =
   | Not e -> fprintf out "!"; print_expr out e
   | Record (e1, op, e2) -> 
     print_expr out e1;
-    fprintf out "%s" (match op with Concatenate -> "&" | Intersect -> "|");
+    fprintf out " %s " (match op with Concatenate -> "&" | Intersect -> "|");
     print_expr out e2
   | Project (e, s) -> 
     print_expr out e;
@@ -108,7 +108,7 @@ let print_ctx ctx =
     printf "\n"
 
 let print_term_ctx ctx = 
-  Cyclic.to_list ctx |> List.iter @@ fun (name, v) -> 
+  Types.Dict.to_list ctx |> List.iter @@ fun (name, lazy v) -> 
     printf "%s : " name;
     Eval.print_val v;
     printf "\n"
@@ -120,11 +120,12 @@ let () = match P.parse_argv op with
   | [fname] -> 
     let ast = parse (File.open_in fname) in
     let ctx = J.infer_defs Cyclic.empty ast in
+    (* print_prog stdout ast; *)
     print_ctx ctx;
   try
     if O.get interpret then
-      (match Cyclic.find_rec_opt "main" (Eval.eval Cyclic.empty ast) with
-      | Some (v, _) -> print_newline (); Eval.print_val v; print_newline ()
+      (match Types.Dict.find_opt "main" (Eval.eval Types.Dict.empty ast) with
+      | Some lazy v -> print_newline (); Eval.print_val v; print_newline ()
       | None -> failwith "no main function!")
     else exit 0
   with Eval.EvalErr (ctx, err, sp) -> 

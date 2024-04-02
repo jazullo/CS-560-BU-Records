@@ -23,7 +23,7 @@ let rec deepcopy (_e, _sp, _t) = (match _e with
 type value = 
   | VInt of int
   | VBool of bool
-  | VClosure of (string, value) Cyclic.t * pat * expr * S.t
+  | VClosure of value Lazy.t Dict.t * pat * expr * S.t
   | VRec of value Dict.t
 
 let rec print_val = let open Printf in function
@@ -34,7 +34,8 @@ let rec print_val = let open Printf in function
     (match Dict.to_list r with
     | [] -> ()
     | (s, v) :: t -> printf "%s = " s; print_val v; 
-      List.iter (fun (s', v') -> printf ", %s = " s'; print_val v') t)
+      List.iter (fun (s', v') -> printf ", %s = " s'; print_val v') t);
+    printf "%s" "}"
   | VClosure _ -> printf "%s" "<fun>"
 
 let rec show_val = let open Printf in function
@@ -75,7 +76,7 @@ let print_err = let open Printf in function
   | MiscBadRecord -> print_endline "Bad record."
   | MatchCatNonsubproducts -> print_endline "Concat pattern must have record subpatterns."
 
-exception EvalErr of (string, value) Cyclic.t * eval_err_type * span
+exception EvalErr of value Lazy.t Dict.t * eval_err_type * span
 let crash ctx err sp = raise (EvalErr (ctx, err, sp))
 
 let deepcopy_val = function       (* copy context? *)
@@ -86,7 +87,7 @@ let concretize_rec rho = match uget rho with
   | Free.Var _ -> Free.unify rho (Free.uconst (Inv, Dict.empty))
   | Free.Expr e -> List.iter (snd %> List.iter (Free.unify (Free.uconst (Inv, Dict.empty)))) e
 
-let rec (==>) (ctx : (string, value) Cyclic.t) (_e, _sp, _t) = match _e with
+let rec (==>) (ctx : value Lazy.t Dict.t) (_e, _sp, _t) = match _e with
   | Ternary (e1, e2, e3) -> 
     begin match ctx ==> e1 with
       | VBool true -> ctx ==> e2
@@ -156,15 +157,17 @@ let rec (==>) (ctx : (string, value) Cyclic.t) (_e, _sp, _t) = match _e with
       | None -> crash ctx (ProjectAbsentField s) _sp)
     | _ -> crash ctx ProjectNonproduct _sp)
   
-  | Binding (s, e1, e2) -> Cyclic.insert s (ctx ==> e1) ctx ==> e2
+  | Binding (s, e1, e2) -> add_rec ctx s e1 _t ==> e2
   | Abstract (p, e) -> VClosure (ctx, p, e, _t)
   | RecordCon asgns -> VRec (Dict.of_list (List.map (T2.map2 ((==>) ctx)) asgns))
   | IntLit i -> VInt i
   | BoolLit b -> VBool b
-  | Id s -> fst (Cyclic.find_rec s ctx)
+  | Id s -> (match Dict.find_opt s ctx with
+    | Some lazy v -> v
+    | None -> failwith ("Unbound variable [" ^ s ^ "]."))
 
 and case ctx (p, _sp, _) = match p with
-  | Param s -> fun v -> Cyclic.insert s v ctx
+  | Param s -> fun v -> Dict.add s (lazy v) ctx
   | RecPat asgns -> begin function
       | VRec d -> List.fold_left (fun c (s, p') -> Dict.find_opt s d |> function
         | Some x -> case c p' x
@@ -194,7 +197,13 @@ and case ctx (p, _sp, _) = match p with
 and eval_cases ctx ps es = 
   List.fold_left (fun c (p, e) -> case c p (c ==> e)) ctx (List.combine ps es)
 
+and add_rec c s e t : value Lazy.t Dict.t = match uget t with
+  | S.MFun _ -> 
+    let rec c' = lazy (Dict.add s (lazy (Lazy.force c' ==> e)) c) in
+    Lazy.force c'
+  | _ -> Dict.add s (lazy (c ==> e)) c
+
 let eval ctx defs = 
   List.fold_left (fun c -> function
-    | (s, e), _, _ -> Cyclic.insert s (c ==> e) c
+    | (s, e), _, t -> add_rec c s e t
   ) ctx defs

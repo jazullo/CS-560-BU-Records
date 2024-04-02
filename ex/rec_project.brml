@@ -1,0 +1,6 @@
+def f r1 r2 = (r1 | r2).x
+
+def u = {x = 1, y = 7, z = 12}
+def v = {w = 5}
+
+def main = f u v

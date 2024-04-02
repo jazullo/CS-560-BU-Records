@@ -135,6 +135,6 @@ and process_pat ctx (_p, _sp, v) = match _p with
 let infer_defs ctx = List.fold_left (fun ctx' ((name, body), _, a) -> 
   let ctx'' = Cyclic.insert name (a, Mono) ctx' in
   infer ctx'' body;
-  uset a (uget (_3 body));
+  a =? _3 body;
   Cyclic.insert name (a, Poly Universe.empty) ctx''
 ) ctx

@@ -69,12 +69,12 @@ end = Make(struct
   let union r = Dict.union (fun _ r1 r2 -> Some (usnd r1 r2)) r
   let diff r = Dict.merge begin fun _ r1 r2 -> match r1, r2 with
     | Some _ as r3, None -> r3
-    | Some _, Some _ -> (* Unify.(c1 =? c2); *) None
+    | Some c1, Some c2 -> Unify.(c1 =? c2); None
     | None, None | None, (Some _) -> None
   end r
   let symdiff r = Dict.merge begin fun _ r1 r2 -> match r1, r2 with
     | Some _ as r3, None | None, (Some _ as r3) -> r3
-    | Some _, Some _ -> (* Unify.(c1 =? c2); *) None
+    | Some c1, Some c2 -> Unify.(c1 =? c2); None
     | None, None -> None
   end r
 

@@ -81,5 +81,5 @@ pat:
   | LPAREN pat RPAREN {$2}
 
 pat_seq: 
-  | pat pat_seq {fun x -> Abstract ($1, x), $loc, fresh ()}
+  | pat pat_seq {fun x -> Abstract ($1, ($2) x), $loc, fresh ()}
   | {fun x -> x}
