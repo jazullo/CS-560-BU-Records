@@ -56,7 +56,7 @@ expr:
   | expr GE expr {(Comparative ($1, Ge, $3), $loc, fresh ())}
   | expr CONCAT expr {(Record ($1, Concatenate, $3), $loc, fresh ())}
   | expr INTERSECT expr {(Record ($1, Intersect, $3), $loc, fresh ())}
-  | LET ID pat_seq EQ expr IN expr {(Binding ($2, ($3) ($5), fresh (), $7), $loc, fresh ())}
+  | LET ID pat_seq EQ expr IN expr {(Binding ($2, ($3) ($5), $7), $loc, fresh ())}
   | FUN pat_seq ARROW expr {($2) ($4)}
   | expr2 {$1}
 

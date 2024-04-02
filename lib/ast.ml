@@ -17,7 +17,7 @@ and _expr =
   | Not of expr
   | Record of expr * rec_op * expr
   | Project of expr * string
-  | Binding of string * expr * Types.S.t * expr
+  | Binding of string * expr * expr
   | Abstract of pat * expr
   | RecordCon of (string * expr) list
   | IntLit of int
