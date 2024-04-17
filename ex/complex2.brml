@@ -1,0 +1,4 @@
+def f r s = 
+  (r | s).x + (r | s).y
+
+def main = 0
