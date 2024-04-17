@@ -1,0 +1,4 @@
+def pr_x r s = (r | s).x
+def pr_partial y = pr_x y {x = 0}
+def pr_const = pr_partial {x = false}
+def main = pr_const
