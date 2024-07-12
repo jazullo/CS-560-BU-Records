@@ -27,7 +27,7 @@ let _1 = T3.first
 let _2 = T3.second
 let _3 = T3.third
 
-let inter_t l r = Free.(add_t l (add_t r (mul_t l r)))
+let union_t l r = Free.(add_t l (add_t r (mul_t l r)))
 
 let rec infer ctx (_e, _sp, _t) = match _e with
   | Ternary (e1, e2, e3) -> 
@@ -62,21 +62,22 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
     u "Record op expects rec right arg" (_2 e2) (_3 e2) (uref (TRec r));
     u "Union of records is not compatable with expected result" _sp _t
-      (uref (TRec (inter_t l r)))
+      (uref (TRec (Free.mul_t l r)))
   | Record (e1, Concatenate, e2) -> 
     infer ctx e1; infer ctx e2;
     let l = Free.fresh () in
     let r = Free.fresh () in
     u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
-    u "Record op expects rec right arg" (_2 e2) (_3 e2) (uref (TRec r));
+    u "Record op expects rec right arg" (_2 e2) (_3 e2) (uref
+      (TRec (Free.mul_t r (Free.add_t (Free.uconst (Inv, Dict.empty)) l))));
     u "Record op expects rec result" _sp _t
-      (uref (TRec (Free.mul_t l r)))
+      (uref (TRec (Free.add_t l r)))
   | Project (e, s) -> 
     infer ctx e;
     let a = Free.fresh () in  (* rest of the record *)
     let v = fresh () in  (* associated value *)
     u "Projection expects a record with the required field" (_2 e) (_3 e) @@
-      uref (TRec (Free.mul_t a (Free.uconst (Fin, Dict.singleton s v))));
+      uref (TRec (union_t a (Free.uconst (Fin, Dict.singleton s v))));
     u "Unexpected result type from projection" _sp _t v
   
   | Binding (s, e1, e2) -> 
@@ -129,7 +130,7 @@ and process_pat ctx (_p, _sp, v) = match _p with
     let rho1, rho2 = Free.(fresh (), fresh ()) in
     u "Cat pattern expects rec left pat" _sp t1 (uref (TRec rho1));
     u "Cat pattern expects rec right pat" _sp t2 (uref (TRec rho2));
-    uset v (TRec (Free.mul_t rho1 rho2));
+    uset v (TRec (union_t rho1 rho2));
     ctx'', v
 
 let infer_defs ctx = List.fold_left (fun ctx' ((name, body), _, a) -> 
