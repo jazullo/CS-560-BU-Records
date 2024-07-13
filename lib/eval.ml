@@ -155,7 +155,7 @@ let rec (==>) (ctx : value Lazy.t Dict.t) (_e, _sp, _t) = match _e with
     | _ -> crash ctx NegateBool _sp)
   | Record (e1, op, e2) -> (match ctx ==> e1, ctx ==> e2 with
     | VRec r1, VRec r2 -> (match op with
-      | Concatenate -> VRec (Dict.union (fun _ _ x -> Some x) r1 r2)
+      | Concatenate | Update -> VRec (Dict.union (fun _ _ x -> Some x) r1 r2)
       | Intersect -> VRec (Dict.merge (fun _ -> function
         | Some _ -> Fun.id
         | None -> Fun.const None) r1 r2))

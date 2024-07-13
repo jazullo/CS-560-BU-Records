@@ -51,7 +51,10 @@ and print_expr out (_e, _, t) =
   | Not e -> fprintf out "!"; print_expr out e
   | Record (e1, op, e2) -> 
     print_expr out e1;
-    fprintf out " %s " (match op with Concatenate -> "|" | Intersect -> "&");
+    fprintf out " %s " (match op with
+      | Concatenate -> "|"
+      | Intersect -> "&"
+      | Update -> "<<");
     print_expr out e2
   | Project (e, s) -> 
     print_expr out e;

@@ -5,7 +5,7 @@ type span = Lexing.position * Lexing.position
 type arith_op = Add | Sub | Mul | Div | Mod
 type cmp_op = Eq | Ne | Gt | Lt | Ge | Le
 type logic_op = And | Or
-type rec_op = Concatenate | Intersect
+type rec_op = Concatenate | Intersect | Update
 
 type expr = _expr * span * Types.S.t
 and _expr = 

@@ -9,7 +9,7 @@
 
 %token EOF
 %token LPAREN RPAREN LBRACE RBRACE COMMA PERIOD FUN ARROW
-%token ADD SUB MUL DIV MOD NOT OR AND CONCAT INTERSECT EQ NE LT LE GT GE
+%token ADD SUB MUL DIV MOD NOT OR AND CONCAT INTERSECT UPDATE EQ NE LT LE GT GE
 %token DEF LET IN IF THEN ELSE
 %token TRUE FALSE
 %token<int> LIT
@@ -24,6 +24,7 @@
 %left ADD SUB
 %left MUL DIV MOD
 %left INTERSECT
+%left UPDATE
 %left CONCAT
 %left AND
 %left OR
@@ -56,6 +57,7 @@ expr:
   | expr GE expr {(Comparative ($1, Ge, $3), $loc, fresh ())}
   | expr CONCAT expr {(Record ($1, Concatenate, $3), $loc, fresh ())}
   | expr INTERSECT expr {(Record ($1, Intersect, $3), $loc, fresh ())}
+  | expr UPDATE expr {(Record ($1, Update, $3), $loc, fresh ())}
   | LET ID pat_seq EQ expr IN expr {(Binding ($2, ($3) ($5), $7), $loc, fresh ())}
   | FUN pat_seq ARROW expr {($2) ($4)}
   | expr2 {$1}

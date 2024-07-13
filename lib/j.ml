@@ -68,10 +68,18 @@ let rec infer ctx (_e, _sp, _t) = match _e with
     let l = Free.fresh () in
     let r = Free.fresh () in
     u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
-    u "Record op expects rec right arg" (_2 e2) (_3 e2) (uref
+    u "Record op expects compatible right arg" (_2 e2) (_3 e2) (uref
       (TRec (Free.mul_t r (Free.add_t (Free.uconst (Inv, Dict.empty)) l))));
     u "Record op expects rec result" _sp _t
       (uref (TRec (Free.add_t l r)))
+  | Record (e1, Update, e2) -> 
+    infer ctx e1; infer ctx e2; 
+    let l = Free.fresh () in
+    let r = Free.fresh () in
+    u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
+    u "Record op expects compatible right arg" (_2 e2) (_3 e2)
+      (uref (TRec (Free.mul_t l r)));
+    u "Record op expects rec result" _sp _t (uref (TRec l))
   | Project (e, s) -> 
     infer ctx e;
     let a = Free.fresh () in  (* rest of the record *)
