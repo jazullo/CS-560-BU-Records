@@ -1,7 +1,7 @@
 open! Batteries
 
 type atom = 
-  | ABool
+  | ABool | AInt
   | ARec of string * bool
   | AFun of bool * bool
 
@@ -16,30 +16,34 @@ module Tau_constant = struct
   let add = Set.sym_diff
   let summate f s = Set.fold (f %> add) s Set.empty
   let recomb s = 
-    let bool_part, rec_part, fun_part = 
-      Set.fold (fun e (bool_part, rec_part, fun_part as st) -> 
+    let bool_part, int_part, rec_part, fun_part = 
+      Set.fold (fun e (bool_part, int_part, rec_part, fun_part as st) -> 
         match e with
-        | ABool -> true, rec_part, fun_part
+        | ABool -> true, int_part, rec_part, fun_part
+        | AInt -> bool_part, true, rec_part, fun_part
         | ARec (x, b1) -> begin match Map.find_opt x rec_part with
           | Some true -> st
-          | Some false | None -> bool_part, Map.add x b1 rec_part, fun_part
+          | Some false
+          | None -> bool_part, int_part, Map.add x b1 rec_part, fun_part
         end
-        | AFun (b1, b2) -> bool_part, rec_part, begin match fun_part with
-          | Some (f1, f2) -> Some (b1 || f1, b2 || f2)
-          | None -> Some (b1, b2)
-        end
-      ) s (false, Map.empty, None) in
+        | AFun (b1, b2) -> bool_part, int_part, rec_part, 
+          begin match fun_part with
+            | Some (f1, f2) -> Some (b1 || f1, b2 || f2)
+            | None -> Some (b1, b2)
+          end
+      ) s (false, false, Map.empty, None) in
     let a1 = 
       Map.foldi (fun x b -> Set.add (ARec (x, b))) rec_part Set.empty in
     let a2 = match fun_part with
       | Some (b1, b2) -> Set.add (AFun (b1, b2)) a1
       | None -> a1 in
-    if bool_part then Set.add ABool a2 else a2
+    let a3 = if bool_part then Set.add ABool a2 else a2 in
+    if int_part then Set.add AInt a3 else a3
   let inter e1 e2 = recomb (Set.union e1 e2)
   let mul s = summate (fun e -> Set.map (inter e) s)
   
   let atom_to_string = function
-    | ABool -> "bool"
+    | ABool -> "bool" | AInt -> "int"
     | ARec (x, b) -> Printf.sprintf "{%s:%d}" x (Bool.to_int b)
     | AFun (b1, b2) -> 
       Printf.sprintf "(%d->%d)" (Bool.to_int b1) (Bool.to_int b2)
@@ -96,3 +100,7 @@ module Show = struct
     IO.close_out s
 
 end
+
+let bconst c = Set.singleton (Set.singleton c)
+let const0 c = Tau.uconst (bconst c)
+let brec x t = Set.(of_list [singleton (ARec x false); singleton (ARec x true)])

@@ -10,8 +10,6 @@ open Types.Tau
 open Types.Unify
 open Types
 
-let fresh () = uref (MVar (!Common.level, unique ()))
-
 let err _sp msg unif_msg = 
   print_endline "Type Error.";
   Common.print_span stdout _sp;
@@ -27,7 +25,7 @@ let _1 = T3.first
 let _2 = T3.second
 let _3 = T3.third
 
-let union_t l r = Free.(add_t l (add_t r (mul_t l r)))
+let union_t l r = Tau.(add_t l (add_t r (mul_t l r)))
 
 let rec infer ctx (_e, _sp, _t) = match _e with
   | Ternary (e1, e2, e3) -> 
