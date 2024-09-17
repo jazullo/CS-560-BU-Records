@@ -6,7 +6,7 @@ module T3 = Tuple3
 
 open Ast
 
-open Types.S
+open Types.Tau
 open Types.Unify
 open Types
 

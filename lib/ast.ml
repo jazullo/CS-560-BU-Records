@@ -7,7 +7,7 @@ type cmp_op = Eq | Ne | Gt | Lt | Ge | Le
 type logic_op = And | Or
 type rec_op = Concatenate | Intersect | Update
 
-type expr = _expr * span * Types.S.t
+type expr = _expr * span * Types.Tau.t
 and _expr = 
   | Ternary of expr * expr * expr
   | Apply of expr * expr
@@ -24,11 +24,11 @@ and _expr =
   | BoolLit of bool
   | Id of string
 
-and pat = _pat * span * Types.S.t
+and pat = _pat * span * Types.Tau.t
 and _pat = 
   | Param of string
   | RecPat of (string * pat) list
   | CatPat of pat * pat
 
-type def = _def * span * Types.S.t
+type def = _def * span * Types.Tau.t
 and _def = string * expr
