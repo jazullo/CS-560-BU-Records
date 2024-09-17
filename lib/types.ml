@@ -108,7 +108,18 @@ let brec x t =
   let t_t = Tau.uconst (bconst (ARec (x, true))) in
   Tau.(add_t (mul_t (add_t t_f t_t) t) t_f)
 
-
+let bfun t1 t2 = 
+  let mk_t b1 b2 = Tau.uconst (bconst (AFun (b1, b2))) in
+  let t_ff = mk_t false false in
+  let t_tf = mk_t true false in
+  let t_ft = mk_t false true in
+  let t_tt = mk_t true true in
+  let ( * ) = Tau.mul_t in
+  let ( + ) = Tau.add_t in
+  t1 * t2 * (t_ff + t_ft + t_tf + t_tt)
+  + t1 * (t_tf + t_ff)
+  + t2 * (t_ft + t_ff)
+  + t_ff
 
 
 
