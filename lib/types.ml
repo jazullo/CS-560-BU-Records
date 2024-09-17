@@ -103,4 +103,14 @@ end
 
 let bconst c = Set.singleton (Set.singleton c)
 let const0 c = Tau.uconst (bconst c)
-let brec x t = Set.(of_list [singleton (ARec x false); singleton (ARec x true)])
+let brec x t = 
+  let t_f = Tau.uconst (bconst (ARec (x, false))) in
+  let t_t = Tau.uconst (bconst (ARec (x, true))) in
+  Tau.(add_t (mul_t (add_t t_f t_t) t) t_f)
+
+
+
+
+
+
+
