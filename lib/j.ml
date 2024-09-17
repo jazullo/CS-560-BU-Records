@@ -30,60 +30,43 @@ let union_t l r = Tau.(add_t l (add_t r (mul_t l r)))
 let rec infer ctx (_e, _sp, _t) = match _e with
   | Ternary (e1, e2, e3) -> 
     infer ctx e1; infer ctx e2; infer ctx e3;
-    u "Ternary condition expects a bool" (_2 e1) (_3 e1) (uref (MLit MBool));
+    u "Ternary condition expects a bool" (_2 e1) (_3 e1) (const0 ABool);
     u "Ternary branches expect the same type" (_2 e1) (_3 e2) (_3 e3);
     u "Unexpected result from ternary" (_2 e1) (_3 e2) _t
   | Apply (e1, e2) -> apply ctx _t e1 e2
   | Arithmetic (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;
-    u "Arithmetic op expects int left arg" (_2 e1) (_3 e1) (uref (MLit MInt));
-    u "Arithmetic op expects int right arg" (_2 e2) (_3 e2) (uref (MLit MInt));
-    u "Arithmetic op expects int result" _sp _t (uref (MLit MInt))
+    u "Arithmetic op expects int left arg" (_2 e1) (_3 e1) (const0 ABool);
+    u "Arithmetic op expects int right arg" (_2 e2) (_3 e2) (const0 ABool);
+    u "Arithmetic op expects int result" _sp _t (const0 ABool)
   | Comparative (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;
-    u "Comparison op expects int left arg" (_2 e1) (_3 e1) (uref (MLit MInt));
-    u "Comparison op expects int right arg" (_2 e2) (_3 e2) (uref (MLit MInt));
-    u "Comparison op expects bool result" _sp _t (uref (MLit MBool))
+    u "Comparison op expects int left arg" (_2 e1) (_3 e1) (const0 ABool);
+    u "Comparison op expects int right arg" (_2 e2) (_3 e2) (const0 ABool);
+    u "Comparison op expects bool result" _sp _t (const0 ABool)
   | Logical (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;
-    u "Logic op expects bool left arg" (_2 e1) (_3 e1) (uref (MLit MBool));
-    u "Logic op expects bool right arg" (_2 e2) (_3 e2) (uref (MLit MBool));
-    u "Logic op expects bool result" _sp _t (uref (MLit MBool))
+    u "Logic op expects bool left arg" (_2 e1) (_3 e1) (const0 ABool);
+    u "Logic op expects bool right arg" (_2 e2) (_3 e2) (const0 ABool);
+    u "Logic op expects bool result" _sp _t (const0 ABool)
   | Not e ->
     infer ctx e;
-    u "Logic op expects bool arg" (_2 e) (_3 e) (uref (MLit MBool));
-    u "Logic op expects bool result" _sp _t (uref (MLit MBool))
+    u "Logic op expects bool arg" (_2 e) (_3 e) (const0 ABool);
+    u "Logic op expects bool result" _sp _t (const0 ABool)
   | Record (e1, Intersect, e2) -> 
     infer ctx e1; infer ctx e2;
-    let l = Free.fresh () in
-    let r = Free.fresh () in
-    u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
-    u "Record op expects rec right arg" (_2 e2) (_3 e2) (uref (TRec r));
-    u "Union of records is not compatable with expected result" _sp _t
-      (uref (TRec (Free.mul_t l r)))
+    u "Record intersection is not compatable with expected result" _sp _t
+      (mul_t (_3 e1) (_3 e2))
   | Record (e1, Concatenate, e2) -> 
     infer ctx e1; infer ctx e2;
-    let l = Free.fresh () in
-    let r = Free.fresh () in
-    u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
-    u "Record op expects compatible right arg" (_2 e2) (_3 e2) (uref
-      (TRec (Free.mul_t r (Free.add_t (Free.uconst (Inv, Dict.empty)) l))));
-    u "Record op expects rec result" _sp _t
-      (uref (TRec (Free.add_t l r)))
-  | Record (e1, Update, e2) -> 
-    infer ctx e1; infer ctx e2; 
-    let l = Free.fresh () in
-    let r = Free.fresh () in
-    u "Record op expects rec left arg" (_2 e1) (_3 e1) (uref (TRec l));
-    u "Record op expects compatible right arg" (_2 e2) (_3 e2)
-      (uref (TRec (Free.mul_t l r)));
-    u "Record op expects rec result" _sp _t (uref (TRec l))
+    u "Union of records is not compatable with expected result" _sp _t
+      (union_t (_3 e1) (_3 e2))
   | Project (e, s) -> 
     infer ctx e;
-    let a = Free.fresh () in  (* rest of the record *)
+    let a = fresh () in  (* rest of the record *)
     let v = fresh () in  (* associated value *)
     u "Projection expects a record with the required field" (_2 e) (_3 e) @@
-      uref (TRec (union_t a (Free.uconst (Fin, Dict.singleton s v))));
+      union_t a (brec s v);
     u "Unexpected result type from projection" _sp _t v
   
   | Binding (s, e1, e2) -> 
@@ -97,12 +80,10 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   
   | RecordCon rs -> 
     u "Unexpected record type" _sp _t
-    (uref (TRec (Free.uconst (Fin, List.fold_left (fun acc (s, e) -> 
-      infer ctx e;
-      Dict.add s (_3 e) acc
-    ) Dict.empty rs))))
-  | IntLit _ -> u "Unexpected int type" _sp _t (uref (MLit MInt))
-  | BoolLit _ -> u "Unexpected bool type" _sp _t (uref (MLit MBool))
+      (List.fold_left (fun a (x, e) -> infer ctx e; 
+        add_t a (brec x (_3 e))) (uref (Expr [])) rs)
+  | IntLit _ -> u "Unexpected int type" _sp _t (const0 AInt)
+  | BoolLit _ -> u "Unexpected bool type" _sp _t (const0 ABool)
   | Id s -> (match Cyclic.find_rec_opt s ctx with
     | None -> err _sp "Unbound Identifier" ("Cannot find ["^s^"].")
     | Some ((t, Mono), _) -> u "Identifier with unexpected type" _sp _t t
@@ -112,13 +93,13 @@ let rec infer ctx (_e, _sp, _t) = match _e with
 and apply ctx t0 e1 e2 = 
   infer ctx e1; infer ctx e2;
   let t_result = fresh () in
-  u "Unexpected argument type" (_2 e1) (uref (MFun (_3 e2, t_result))) (_3 e1);
+  u "Unexpected argument type" (_2 e1) (bfun (_3 e2) t_result) (_3 e1);
   u "Unexpected function type" (_2 e1) t0 t_result
 
 and abstract ctx t0 e1 p = 
   let ctx', t_arg = process_pat ctx p in
   infer ctx' e1;
-  u "Unexpected function type" (_2 e1) t0 (uref (MFun (t_arg, _3 e1)))
+  u "Unexpected function type" (_2 e1) t0 (bfun t_arg (_3 e1))
 
 and process_pat ctx (_p, _sp, v) = match _p with
   | Param s -> 

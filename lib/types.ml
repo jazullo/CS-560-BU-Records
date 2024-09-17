@@ -1,5 +1,9 @@
 open! Batteries
 
+type gen = 
+  | Mono
+  | Poly of int Set.t
+
 type atom = 
   | ABool | AInt
   | ARec of string * bool
