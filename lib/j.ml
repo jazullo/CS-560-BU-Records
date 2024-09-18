@@ -30,8 +30,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | Ternary (e1, e2, e3) -> 
     infer ctx e1; infer ctx e2; infer ctx e3;
     u "Ternary condition expects a bool" (_2 e1) (_3 e1) (const0 ABool);
-    u "Ternary branches expect the same type" (_2 e1) (_3 e2) (_3 e3);
-    u "Unexpected result from ternary" (_2 e1) (_3 e2) _t
+    u "Unexpected result from ternary" (_2 e1) (mul_t (_3 e2) (_3 e3)) _t
   | Apply (e1, e2) -> apply ctx _t e1 e2
   | Arithmetic (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;

@@ -1,3 +1,7 @@
 def succ x = x + 1
 
-def f x = x
+def y = succ 0
+
+def z = 
+  if true then 0
+  else succ 0
