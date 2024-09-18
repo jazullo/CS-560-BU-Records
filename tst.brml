@@ -1,0 +1,7 @@
+def succ x = x + 1
+def pred x = x - 1
+
+def plus x y = 
+  if y > 0 then plus (succ x) (pred y)
+  else x
+

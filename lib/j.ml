@@ -89,9 +89,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   
 and apply ctx t0 e1 e2 = 
   infer ctx e1; infer ctx e2;
-  let t_result = fresh () in
-  u "Unexpected argument type" (_2 e1) (bfun (_3 e2) t_result) (_3 e1);
-  u "Unexpected function type" (_2 e1) t0 t_result
+  u "Unexpected argument type" (_2 e1) (bfun (_3 e2) t0) (_3 e1);
 
 and abstract ctx t0 e1 p = 
   let ctx', t_arg = process_pat ctx p in

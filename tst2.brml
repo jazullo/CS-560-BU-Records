@@ -1,0 +1,3 @@
+def succ x = x + 1
+
+def f x = x
