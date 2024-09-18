@@ -1,5 +1,4 @@
-[@@@warning "-32"]
-[@@@warning "-33"]
+[@@@warning "-32-33"]
 
 open! Batteries
 open! Brml
