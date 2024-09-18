@@ -36,13 +36,13 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | Apply (e1, e2) -> apply ctx _t e1 e2
   | Arithmetic (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;
-    u "Arithmetic op expects int left arg" (_2 e1) (_3 e1) (const0 ABool);
-    u "Arithmetic op expects int right arg" (_2 e2) (_3 e2) (const0 ABool);
-    u "Arithmetic op expects int result" _sp _t (const0 ABool)
+    u "Arithmetic op expects int left arg" (_2 e1) (_3 e1) (const0 AInt);
+    u "Arithmetic op expects int right arg" (_2 e2) (_3 e2) (const0 AInt);
+    u "Arithmetic op expects int result" _sp _t (const0 AInt)
   | Comparative (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;
-    u "Comparison op expects int left arg" (_2 e1) (_3 e1) (const0 ABool);
-    u "Comparison op expects int right arg" (_2 e2) (_3 e2) (const0 ABool);
+    u "Comparison op expects int left arg" (_2 e1) (_3 e1) (const0 AInt);
+    u "Comparison op expects int right arg" (_2 e2) (_3 e2) (const0 AInt);
     u "Comparison op expects bool result" _sp _t (const0 ABool)
   | Logical (e1, _, e2) -> 
     infer ctx e1; infer ctx e2;
