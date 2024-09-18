@@ -64,10 +64,8 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | Project (e, s) -> 
     infer ctx e;
     let a = fresh () in  (* rest of the record *)
-    let v = fresh () in  (* associated value *)
     u "Projection expects a record with the required field" (_2 e) (_3 e) @@
-      union_t a (brec s v);
-    u "Unexpected result type from projection" _sp _t v
+      union_t a (brec s _t);
   
   | Binding (s, e1, e2) -> 
     incr Common.level; 
