@@ -5,6 +5,8 @@ open Ast
 open Types
 open! J
 
+module Dict = Map.Make(String)
+
 let rec deepcopy x (_e, _sp, _t) = (match _e with
   | Ternary (e1, e2, e3) -> Ternary (deepcopy x e1, deepcopy x e2, deepcopy x e3)
   | Apply (e1, e2) -> Apply (deepcopy x e1, deepcopy x e2)
@@ -29,7 +31,7 @@ and deepcopy_pat x (_p, _sp, _t) = (match _p with
 type value = 
   | VInt of int
   | VBool of bool
-  | VClosure of value Lazy.t Dict.t * pat * expr * S.t
+  | VClosure of value Lazy.t Dict.t * pat * expr * Tau.t
   | VRec of value Dict.t
 
 let rec print_val = let open Printf in function
@@ -61,7 +63,7 @@ type eval_err_type =
   | AndLeftOpNonbool | OrLeftOpNonbool | NegateBool
   | RecOpNonproduct | ProjectAbsentField of string | ProjectNonproduct
   | MatchAbsentField of string | MatchNonrecordOnRecord | MatchNonrecordOnCat
-  | MiscBadRecord | MatchCatNonsubproducts
+  | MiscBadRecord
 
 let print_err = let open Printf in function
   | BadGuard s -> printf "Nonbool [%s] in guard.\n" s
@@ -80,7 +82,6 @@ let print_err = let open Printf in function
   | MatchNonrecordOnRecord -> print_endline "Cannot match nonrecord against record pattern."
   | MatchNonrecordOnCat -> print_endline "Cannot match nonrecord against concat pattern."
   | MiscBadRecord -> print_endline "Bad record."
-  | MatchCatNonsubproducts -> print_endline "Concat pattern must have record subpatterns."
 
 exception EvalErr of value Lazy.t Dict.t * eval_err_type * span
 let crash ctx err sp = raise (EvalErr (ctx, err, sp))
@@ -92,8 +93,8 @@ let deepcopy_val x = function       (* copy context? *)
 let concretize_rec rho = 
   Unify.simplify rho;
   match uget rho with
-  | Free.Var _ -> Free.unify rho (Free.uconst (Inv, Dict.empty))
-  | Free.Expr e -> List.iter (snd %> List.iter (Free.unify (Free.uconst (Inv, Dict.empty)))) e
+  | Tau.Var _ -> Tau.unify rho (Tau.uexpr Tau.one)
+  | Tau.Expr e -> List.iter (snd %> List.iter (Tau.unify (Tau.uexpr Tau.one))) e
 
 let rec (==>) (ctx : value Lazy.t Dict.t) (_e, _sp, _t) = match _e with
   | Ternary (e1, e2, e3) -> 
@@ -155,7 +156,7 @@ let rec (==>) (ctx : value Lazy.t Dict.t) (_e, _sp, _t) = match _e with
     | _ -> crash ctx NegateBool _sp)
   | Record (e1, op, e2) -> (match ctx ==> e1, ctx ==> e2 with
     | VRec r1, VRec r2 -> (match op with
-      | Concatenate | Update -> VRec (Dict.union (fun _ _ x -> Some x) r1 r2)
+      | Concatenate -> VRec (Dict.union (fun _ _ x -> Some x) r1 r2)
       | Intersect -> VRec (Dict.merge (fun _ -> function
         | Some _ -> Fun.id
         | None -> Fun.const None) r1 r2))
@@ -182,11 +183,7 @@ and monomorph _t = function
     let e = deepcopy x e in
     let t = Unify.deepcopy x t in
     Unify.(t =? _t);
-    begin match[@warning "-8"] uget _t with
-      | S.MFun (i, o) -> 
-        Unify.(_3 p =? i);
-        Unify.(_3 e =? o)
-    end;
+    Unify.(_t =? bfun (_3 p) (_3 e));
     VClosure (c, p, e, t)
   | VRec fields -> VRec (Dict.map (monomorph _t) fields)
   | VInt _ | VBool _ as v -> v
@@ -199,34 +196,40 @@ and case ctx (p, _sp, _) = match p with
         | None -> crash ctx (MatchAbsentField s) _sp) ctx asgns
       | _ -> crash ctx MatchNonrecordOnRecord _sp
     end
-  | CatPat ((_p1, _, _t1 as p1), (_p2, _, _t2 as p2)) -> begin match uget _t1, uget _t2 with
-      | S.TRec rho1, S.TRec rho2 -> 
-        concretize_rec rho1; concretize_rec rho2;  (* generalize first? *)
-        begin match Free.simplify (uget rho1), Free.simplify (uget rho2) with
-          | Var _, _ | _, Var _ -> failwith "poly record at runtime"
-          | Expr [_, _ :: _], Expr [_, _] | Expr [_, _], Expr [_, _ :: _] -> 
-            failwith "partially poly record at runtime"
-          | Expr [(Inv, _), []], Expr [_, []] | Expr [_, []], Expr [(Inv, _), []] -> 
-            failwith "unconstructable record at runtime"
-          | Expr [(Fin, c1), []], Expr [(Fin, c2), []] -> begin function 
-            | VRec d -> 
-              let ctx' = case ctx p1 (VRec (Dict.filter (fun s _ -> Dict.mem s c1) d)) in
-              case ctx' p2 (VRec (Dict.filter (fun s _ -> Dict.mem s c2) d))
-            | _ -> crash ctx MatchNonrecordOnCat _sp
-          end
-          | _ -> crash ctx MiscBadRecord _sp
-        end
-      | _ -> crash ctx MatchCatNonsubproducts _sp
+  | CatPat ((_p1, _, rho1 as p1), (_p2, _, rho2 as p2)) -> 
+    concretize_rec rho1; concretize_rec rho2;  (* generalize first? *)
+    begin match Tau.simplify (uget rho1), Tau.simplify (uget rho2) with
+      | Var _, _ | _, Var _ -> failwith "poly record at runtime"
+      | Expr [_, _ :: _], Expr [_, _] | Expr [_, _], Expr [_, _ :: _] -> 
+        failwith "partially poly record at runtime"
+      | Expr [b1, []], Expr [b2, []]
+        when Tau_constant.(is_one b1 || is_one b2) -> 
+          failwith "unconstructable record at runtime"
+      | Expr [c1, []], Expr [c2, []] -> begin function 
+        | VRec d -> 
+          let ex m = Set.(exists (exists @@ function
+            | ARec (x, _) -> m = x
+            | _ -> false)) in
+          let ctx' = case ctx p1 (VRec (Dict.filter (fun s _ -> ex s c1) d)) in
+          case ctx' p2 (VRec (Dict.filter (fun s _ -> ex s c2) d))
+        | _ -> crash ctx MatchNonrecordOnCat _sp
+      end
+      | _ -> crash ctx MiscBadRecord _sp
     end
 
 and eval_cases ctx ps es = 
   List.fold_left (fun c (p, e) -> case c p (c ==> e)) ctx (List.combine ps es)
 
-and add_rec c s e t : value Lazy.t Dict.t = match uget t with
-  | S.MFun _ -> 
+and add_rec c s e t : value Lazy.t Dict.t = 
+  let exfun = 
+    uget %> (fun[@warning "-8"] (Tau.Expr e) -> e)
+    %> List.exists (fst %> Set.(exists (exists @@ function
+      | AFun _ -> true  (* hack for now *)
+      | _ -> false))) in
+  if exfun t then
     let rec c' = lazy (Dict.add s (lazy (Lazy.force c' ==> e)) c) in
     Lazy.force c'
-  | _ -> Dict.add s (lazy (c ==> e)) c
+  else Dict.add s (lazy (c ==> e)) c
 
 let eval ctx defs = 
   List.fold_left (fun c -> function

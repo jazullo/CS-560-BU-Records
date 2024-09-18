@@ -1,5 +1,4 @@
 open! Batteries
-open Uref
 
 module T2 = Tuple2
 module T3 = Tuple3
@@ -79,7 +78,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   | RecordCon rs -> 
     u "Unexpected record type" _sp _t
       (List.fold_left (fun a (x, e) -> infer ctx e; 
-        add_t a (brec x (_3 e))) (uref (Expr [])) rs)
+        add_t a (brec x (_3 e))) (uexpr []) rs)
   | IntLit _ -> u "Unexpected int type" _sp _t (const0 AInt)
   | BoolLit _ -> u "Unexpected bool type" _sp _t (const0 ABool)
   | Id s -> (match Cyclic.find_rec_opt s ctx with
@@ -104,7 +103,7 @@ and process_pat ctx (_p, _sp, v) = match _p with
   | RecPat xs -> 
     List.fold_left (fun (c, t) (x, p) -> 
       Tuple2.map2 (brec x %> add_t t) (process_pat c p)
-    ) (ctx, uref (Expr [])) xs
+    ) (ctx, uexpr []) xs
   | CatPat (p1, p2) -> 
     let ctx', t1 = process_pat ctx p1 in
     let ctx'', t2 = process_pat ctx' p2 in

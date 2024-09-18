@@ -70,7 +70,7 @@ module Unify = struct
   let simplify r = uset r (Tau.simplify (uget r))
   let (=?) = Tau.unify
 
-  let mk_cache () = Hashtbl.create 16, Hashtbl.create 16
+  let mk_cache () = Hashtbl.create 16
   let generalize ?(tbl=Hashtbl.create 16) w t0 = 
     let cache x = 
       let nu = uref (Tau.Var (!Common.level, unique ())) in

@@ -53,8 +53,7 @@ and print_expr out (_e, _, t) =
     print_expr out e1;
     fprintf out " %s " (match op with
       | Concatenate -> "|"
-      | Intersect -> "&"
-      | Update -> "<<");
+      | Intersect -> "&");
     print_expr out e2
   | Project (e, s) -> 
     print_expr out e;
@@ -111,7 +110,7 @@ let print_ctx ctx =
     printf "\n"
 
 let print_term_ctx ctx = 
-  Types.Dict.to_list ctx |> List.iter @@ fun (name, lazy v) -> 
+  Eval.Dict.to_list ctx |> List.iter @@ fun (name, lazy v) -> 
     printf "%s : " name;
     Eval.print_val v;
     printf "\n"
@@ -127,7 +126,7 @@ let () = match P.parse_argv op with
     print_ctx ctx;
   try
     if O.get interpret then
-      (match Types.Dict.find_opt "main" (Eval.eval Types.Dict.empty ast) with
+      (match Eval.Dict.find_opt "main" (Eval.eval Eval.Dict.empty ast) with
       | Some lazy v -> print_newline (); Eval.print_val v; print_newline ()
       | None -> failwith "no main function!")
     else exit 0

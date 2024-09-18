@@ -38,7 +38,6 @@ rule token = parse
   | "&&" {AND}
   | "|" {CONCAT}
   | "&" {INTERSECT}
-  | "<<" {UPDATE}
   | "=" {EQ}
   | "<>" {NE}
   | "<" {LT}
