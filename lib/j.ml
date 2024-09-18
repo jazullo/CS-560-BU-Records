@@ -110,15 +110,12 @@ and process_pat ctx (_p, _sp, v) = match _p with
   | CatPat (p1, p2) -> 
     let ctx', t1 = process_pat ctx p1 in
     let ctx'', t2 = process_pat ctx' p2 in
-    let rho1, rho2 = Free.(fresh (), fresh ()) in
-    u "Cat pattern expects rec left pat" _sp t1 (uref (TRec rho1));
-    u "Cat pattern expects rec right pat" _sp t2 (uref (TRec rho2));
-    uset v (TRec (union_t rho1 rho2));
+    u "Incompatible concatenation pattern" _sp v (union_t t1 t2);
     ctx'', v
 
 let infer_defs ctx = List.fold_left (fun ctx' ((name, body), _, a) -> 
   let ctx'' = Cyclic.insert name (a, Mono) ctx' in
   infer ctx'' body;
   a =? _3 body;
-  Cyclic.insert name (a, Poly Universe.empty) ctx''
+  Cyclic.insert name (a, Poly Set.empty) ctx''
 ) ctx
