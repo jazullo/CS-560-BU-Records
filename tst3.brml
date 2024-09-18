@@ -1,0 +1,5 @@
+def succ x = x + 1
+def zero = 0
+def one = succ zero
+def two = succ one
+def three = succ two

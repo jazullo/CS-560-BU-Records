@@ -1,0 +1,21 @@
+~/CS-560-BU-Records# dune exec brml tst4.brml
+Type Error.                        
+Line 5, Columns 19-23
+Unexpected argument type.
+Incompatible Set Types <(0->0) + ((0->0) + (1->0)) b12 + ((0->0) + (0->1) + (1->0) + (1->1)) b12 b17 + ((0->0) + (0->1)) b17> and <((0->0) + int (0->0) + int (1->1)) b23>.
+
+
+---
+Is there an error in the unifier? 
+
+(0->0) + ((0->0) + (1->0)) b12 + ((0->0) + (0->1) + (1->0) + (1->1)) b12 b17 + ((0->0) + (0->1)) b17
+
+=? 
+
+((0->0) + int (0->0) + int (1->1)) b23
+
+
+b17 |-> int
+then there must be some scheme to get rid of the b12 terms without issue
+and b32 |-> 1
+it seems very likely there's a solution here, and there's just a bug in the current unifier? 

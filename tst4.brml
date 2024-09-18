@@ -1,0 +1,6 @@
+def succ x = x + 1
+def pred x = x - 1
+
+def f x = 
+  if true then f (succ x)
+  else x
