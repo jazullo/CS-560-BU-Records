@@ -32,7 +32,7 @@ module Tau_constant = struct
         end
         | AFun (b1, b2) -> bool_part, int_part, rec_part, 
           begin match fun_part with
-            | Some (f1, f2) -> Some (b1 || f1, b2 || f2)
+            | Some (f1, f2) -> Some (b1 && f1, b2 || f2)
             | None -> Some (b1, b2)
           end
       ) s (false, false, Map.empty, None) in
