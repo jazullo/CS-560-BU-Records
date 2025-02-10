@@ -57,24 +57,26 @@ end = Make(struct
     | Inv, d -> Dict.is_empty d
     | _ -> false
 
-  (* important helpers *)
-  let usnd c1 c2 = 
+  (* unify and take right *)
+  (* let usnd c1 c2 = 
     Unify.(c1 =? c2);
-    c2
+    c2 *)
+  (* just take right *)
+  let usnd _ c2 = c2
   let liftA2 f o1 o2 = match o1, o2 with
     | Some x1, Some x2 -> Some (f x1 x2)
     | None, _ | _, None -> None
+  
   let inter r = Dict.merge (fun _ -> liftA2 usnd) r
   let union r = Dict.union (fun _ r1 r2 -> Some (usnd r1 r2)) r
   let diff r = Dict.merge begin fun _ r1 r2 -> match r1, r2 with
     | Some _ as r3, None -> r3
-    | Some c1, Some c2 -> Unify.(c1 =? c2); None
-    | None, None | None, (Some _) -> None
+    (* | Some c1, Some c2 -> Unify.(c1 =? c2); None *)
+    | Some _, Some _ | None, None | None, (Some _) -> None
   end r
   let symdiff r = Dict.merge begin fun _ r1 r2 -> match r1, r2 with
     | Some _ as r3, None | None, (Some _ as r3) -> r3
-    | Some c1, Some c2 -> Unify.(c1 =? c2); None
-    | None, None -> None
+    | Some _, Some _ | None, None -> None
   end r
 
   let mul (m1, r1) (m2, r2) = match m1, m2 with
@@ -109,6 +111,16 @@ and Unify : sig
   val mk_cache : unit -> ('a, 'b) Hashtbl.t * ('c, 'd) Hashtbl.t
 end = struct
 
+  let make_field_map (r : Free.t) = match uget r with
+    | Expr bs -> 
+      List.fold_left (fun acc ((_, c), _) -> 
+        Dict.union (fun _ _ a -> Some a) c acc) Dict.empty bs
+    | Var _ -> Dict.empty
+
+  let align r1 r2 = 
+    ignore @@ Dict.union (fun _ c1 c2 -> 
+      Unify.(c1 =? c2); None) (make_field_map r1) (make_field_map r2)
+
   let simplify r = uset r (Free.simplify (uget r))
 
   (* syntactic unification *)
@@ -121,6 +133,7 @@ end = struct
       o1 =? o2;
       f
     | TRec r1 as r, TRec r2 -> 
+      align r1 r2;
       Free.unify r1 r2;
       r
     | l, r -> raise (Common.UnifError (Printf.sprintf
