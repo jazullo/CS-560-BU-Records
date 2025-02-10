@@ -1,0 +1,4 @@
+def f r = (r | {x = 0}).x
+def g r = (r & {x = 0}).x
+
+def main = 0
