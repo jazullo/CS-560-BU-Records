@@ -40,6 +40,10 @@ and Free : sig  (* Boolean unifier for infinite boolean rings *)
   val uconst : mode * S.t Dict.t -> t
   val pretty_anf : 'a BatInnerIO.output -> t -> unit
   val print_anf : t -> unit
+  val factor : t -> ((mode * S.t Dict.t) * t list) list -> 
+    ((mode * S.t Dict.t) * t list) list * ((mode * S.t Dict.t) * t list) list
+  val one : ((mode * S.t Dict.t) * t list) list
+  (* val var : t -> ((mode * S.t Dict.t) * t list) list *)
 end = Make(struct
   (* Infinite Boolean Rings (Free BRs of a countably infinite set) *)
 (* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
@@ -211,6 +215,40 @@ end = struct
     | Expr ts -> Expr (List.map (Tuple2.map (dc_helper x) (List.map (deepcopy_rec x))) ts) *)
   
 end
+
+(* and BGen : sig
+
+end = struct
+
+  (* level must be passed in to only collect free variables *)
+  let rec collect_rectys (t0 : Types.S.t) = match uget t0 with
+    | MVar _ | MLit _ -> []
+    | MFun (i, o) -> collect_rectys i @ collect_rectys o
+    | TRec r -> match uget r with
+      | Var _ -> [r]
+      | Expr bs -> 
+        List.fold_left (fun a ((_, d), _) -> 
+          Dict.fold (fun _ t b -> collect_rectys t @ b) d a) [r] bs
+  
+  let rec vars ?(acc=[]) = List.fold_left (fun a (r : Types.Free.t) -> 
+    match uget r with
+    | Var _ -> if List.exists (Uref.equal r) a then a else r :: a
+    | Expr bs -> List.fold_left (fun acc (_, e) -> vars ~acc e) a bs
+  ) acc
+
+  let factor2 x1 x2 (r : Free.t) = match uget r with
+    | Var _ when Uref.equal r x1 -> Free.(one, [], one, [], [])
+    | Var _ when Uref.equal r x2 -> Free.(one, [], [], one, [])
+    | Var _ -> Free.(one, [], [], [], [one, [r]])
+    | Expr bs -> 
+      let t1, t2 = Free.factor x1 bs in
+      let t3, t4 = Free.factor x2 t1 in
+      let t5, t6 = Free.factor x2 t2 in
+      _
+  
+  (* we must only consider free row type variables *)
+
+end *)
 
 and Show : sig
   val print_ty : 'a BatInnerIO.output -> S.t -> unit
