@@ -338,7 +338,7 @@ module BGen = struct
       FRec (List.map Tuple2.(map (map Fun.id (Dict.to_list %> 
         List.map (map2 freeze))) (List.map getvar)) e)
   
-  let many ctx tau = 
+  let many ctx x = 
     let ht = Hashtbl.create 32 in
     let idx = ref (-1) in
     let nu () = incr idx; !idx in
@@ -356,8 +356,7 @@ module BGen = struct
         | Free.Var _ -> ()
         | Free.Expr e -> 
           List.iter (fst %> snd %> Dict.values %> Enum.iter gather_rows) e in
-    gather_rows tau;
-    Cyclic.vmap gather_rows ctx |> ignore;
+    Cyclic.vmap (fst %> gather_rows) ctx |> ignore;
     let arr = Array.init (Hashtbl.length ht) (fun _ -> BGenAux.zero) in
     let rec set_rows t = match uget t with
       | S.MVar _ | MLit _ -> ()
@@ -368,8 +367,7 @@ module BGen = struct
         | Var _ -> ()
         | Expr e -> 
           List.iter (fst %> snd %> Dict.values %> Enum.iter set_rows) e in
-    set_rows tau;
-    Cyclic.vmap set_rows ctx |> ignore;
+    Cyclic.vmap (fst %> set_rows) ctx |> ignore;
     let rec row_vars t = 
       match uget t with
       | S.MVar _ | MLit _ -> Map.empty
@@ -378,15 +376,15 @@ module BGen = struct
         | Var (_, i) -> Map.singleton i r
         | Expr e -> List.fold_left (fun a ((_, d), _) -> 
           Dict.fold (fun _ -> row_vars %> Map.union) d a) Map.empty e in
-    let tau_types = row_vars tau in
-    let ctx_types = 
-      List.map (snd %> row_vars) (Cyclic.to_list ctx)
+    let tau_vars = row_vars (fst (fst (Cyclic.find_rec x ctx))) in
+    let ctx_vars = 
+      List.map (snd %> fst %> row_vars) (Cyclic.to_list ctx)
       |> List.fold_left Map.union Map.empty in
     let ctx_types_reduced = Map.merge (fun _ o1 o2 -> match o1, o2 with
       | (Some _ | None), Some _ | None, None -> None
-      | Some _ as o, None -> o) ctx_types tau_types in
+      | Some _ as o, None -> o) ctx_vars tau_vars in
     let to_list = Map.values %> List.of_enum in
-    gen (to_list tau_types) (to_list ctx_types_reduced) arr;
+    gen (to_list tau_vars) (to_list ctx_types_reduced) arr;
     let rec reconstruct t = match uget t with
       | S.MVar _ | MLit _ -> t
       | MFun (i, o) -> uref (S.MFun (reconstruct i, reconstruct o))
@@ -395,5 +393,5 @@ module BGen = struct
         | Expr e -> 
           uref (Expr (List.map Tuple2.(map1 (map2 (Dict.map reconstruct))) e))
       end |> uref in
-    Cyclic.vmap reconstruct ctx, reconstruct tau
+    Cyclic.vmap (Tuple2.map1 reconstruct) ctx
 end
