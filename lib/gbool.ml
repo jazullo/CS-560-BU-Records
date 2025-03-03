@@ -24,7 +24,7 @@ module Make(B : Poly) = struct
 
   (* Factorization core based on formal derivatives *)
   (* "On a Polytime Factorization Algorithm from Multilinear Polynomials..." *)
-  let rec fd f = match B.vars f with
+  let fd f = match B.vars f with
     | [] -> None
     | x :: t -> 
       let g = B.mul B.(replace x zero f) (d f x) in
@@ -41,7 +41,7 @@ module Make(B : Poly) = struct
     tc @ List.unfold tf fd
 
   let gen vars arr = 
-    let rec go = function
+    let go = function
       | [] -> () | v1 :: vs -> 
         List.iter (fun v2 -> 
           let p3, p4, p5 = B.(ref zero, ref zero, ref zero) in

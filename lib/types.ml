@@ -40,6 +40,10 @@ and Free : sig  (* Boolean unifier for infinite boolean rings *)
   val uconst : mode * S.t Dict.t -> t
   val pretty_anf : 'a BatInnerIO.output -> t -> unit
   val print_anf : t -> unit
+  module Const : Constant
+  val factor : 
+    t -> ((mode * S.t Dict.t) * t list) list -> 
+    ((mode * S.t Dict.t) * t list) list * ((mode * S.t Dict.t) * t list) list
 end = Make(struct
   (* Infinite Boolean Rings (Free BRs of a countably infinite set) *)
 (* Fin: S.t Dict.t is the record with keys = string (tags) and values = S.t (types) 
@@ -238,3 +242,59 @@ end = struct
     IO.close_out s
 
 end
+
+module Temp = struct
+  include Free
+  let add = add_t
+  let mul = mul_t
+  let zero = uref (Expr [])
+  let one = uref (Expr [(Inv, Dict.empty), []])
+  let is_zero t = 
+    Unify.simplify t;
+    Uref.equal t zero
+  let is_one t = 
+    let t3 = add t one in
+    is_zero t3
+  let to_string = Show.ty
+  
+  let bmatch v = uget %> function
+    | Expr e -> 
+      let e1, e2 = Free.factor (v) e in
+      uref (Expr e1), uref (Expr e2)
+    | Var _ as v_ -> 
+      if v_ = uget v then v, zero
+      else failwith "internal error: scrutinee variable absent from row type"
+  
+  let factor_consts t = match uget t with
+    | Var _ -> [], t
+    | Expr t_ -> 
+      let gcd = List.fold_left (fun gcf e -> match fst e, gcf with
+        | (Fin, d2), (Fin, d1) ->
+            Fin, Dict.merge (fun _ o1 o2 -> match o1, o2 with
+              | Some _, Some d -> Some d
+              | _ -> None) d1 d2
+        | (Fin, d2), (Inv, d1) | (Inv, d1), (Fin, d2) -> 
+          Fin, Dict.merge (fun _ o1 o2 -> match o1, o2 with
+            | None, Some d -> Some d
+            | _ -> None) d1 d2
+        | (Inv, d2), (Inv, d1) -> 
+          Inv, Dict.merge (fun _ o1 o2 -> match o1, o2 with
+            | (Some _ | None), Some d | Some d, None -> Some d
+            | None, None -> None) d1 d2
+      ) (Inv, Dict.empty) t_ in
+      begin match gcd with
+        | Fin, _ -> [uconst gcd]
+        | Inv, d -> 
+          Dict.fold (fun x f acc -> uconst (Inv, Dict.singleton x f) :: acc) d []
+      end, uref (Expr (List.map (Tuple2.map1 (fun coeff -> match coeff, gcd with
+        | (Fin, d1), (Fin, d2) -> Fin, Dict.merge (fun _ o1 o2 -> match o1, o2 with
+          | Some d, None -> Some d
+          | Some _, Some _ | None, Some _| None, None -> None) d1 d2
+        | _ -> _)) t_))
+
+end
+
+(* module BGen = Gbool.Make() *)
+
+
+

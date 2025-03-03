@@ -17,6 +17,7 @@ module type Constant = sig
 end
 
 module Make(C : Constant) = struct
+  module Const = C
   
   type t = _t uref
   and _t = 
