@@ -90,8 +90,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   
   | Binding (s, e1, e2) -> 
     incr Common.level; infer ctx e1; decr Common.level; 
-    let ctx = BGen.many (Cyclic.insert s (_3 e1, Mono) ctx) s in
-    let t' = fst (fst (Cyclic.find_rec s ctx)) in
+    let ctx, t' = BGen.many ctx (_3 e1) in
     let ctx' = Cyclic.insert s (t', Poly (bound t')) ctx in
     infer ctx' e2; 
     u "Unexpected type from let expression" _sp _t (_3 e2)

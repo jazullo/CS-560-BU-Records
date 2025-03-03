@@ -338,7 +338,7 @@ module BGen = struct
       FRec (List.map Tuple2.(map (map Fun.id (Dict.to_list %> 
         List.map (map2 freeze))) (List.map getvar)) e)
   
-  let many ctx x = 
+  let many ctx tau = 
     let ht = Hashtbl.create 32 in
     let idx = ref (-1) in
     let nu () = incr idx; !idx in
@@ -356,6 +356,7 @@ module BGen = struct
         | Free.Var _ -> ()
         | Free.Expr e -> 
           List.iter (fst %> snd %> Dict.values %> Enum.iter gather_rows) e in
+    gather_rows tau;
     Cyclic.vmap (fst %> gather_rows) ctx |> ignore;
     let arr = Array.init (Hashtbl.length ht) (fun _ -> BGenAux.zero) in
     let rec set_rows t = match uget t with
@@ -367,6 +368,7 @@ module BGen = struct
         | Var _ -> ()
         | Expr e -> 
           List.iter (fst %> snd %> Dict.values %> Enum.iter set_rows) e in
+    set_rows tau;
     Cyclic.vmap (fst %> set_rows) ctx |> ignore;
     let rec row_vars t = 
       match uget t with
@@ -376,7 +378,7 @@ module BGen = struct
         | Var (_, i) -> Map.singleton i r
         | Expr e -> List.fold_left (fun a ((_, d), _) -> 
           Dict.fold (fun _ -> row_vars %> Map.union) d a) Map.empty e in
-    let tau_vars = row_vars (fst (fst (Cyclic.find_rec x ctx))) in
+    let tau_vars = row_vars tau in
     let ctx_vars = 
       List.map (snd %> fst %> row_vars) (Cyclic.to_list ctx)
       |> List.fold_left Map.union Map.empty in
@@ -393,5 +395,5 @@ module BGen = struct
         | Expr e -> 
           uref (Expr (List.map Tuple2.(map1 (map2 (Dict.map reconstruct))) e))
       end |> uref in
-    Cyclic.vmap (Tuple2.map1 reconstruct) ctx
+    Cyclic.vmap (Tuple2.map1 reconstruct) ctx, reconstruct tau
 end
