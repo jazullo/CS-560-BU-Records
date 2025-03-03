@@ -40,7 +40,7 @@ and Free : sig  (* Boolean unifier for infinite boolean rings *)
   val uconst : mode * S.t Dict.t -> t
   val pretty_anf : 'a BatInnerIO.output -> t -> unit
   val print_anf : t -> unit
-  module Const : Constant
+  module Const : Constant with type t := mode * S.t Dict.t
   val factor : 
     t -> ((mode * S.t Dict.t) * t list) list -> 
     ((mode * S.t Dict.t) * t list) list * ((mode * S.t Dict.t) * t list) list
@@ -206,6 +206,7 @@ end
 and Show : sig
   val print_ty : 'a BatInnerIO.output -> S.t -> unit
   val ty : S.t -> string
+  val print_rec_ty : 'a BatInnerIO.output -> Free.t -> unit
 end = struct
 
   open Printf
@@ -243,7 +244,7 @@ end = struct
 
 end
 
-module Temp = struct
+module BGen = Gbool.Make (struct
   include Free
   let add = add_t
   let mul = mul_t
@@ -255,12 +256,19 @@ module Temp = struct
   let is_one t = 
     let t3 = add t one in
     is_zero t3
-  let to_string = Show.ty
+  let to_string rho = 
+    let s = IO.output_string () in
+    Show.print_rec_ty s rho;
+    IO.close_out s
+  let uexpr e = 
+    let t = uref (Expr e) in
+    Unify.simplify t;
+    t
   
   let bmatch v = uget %> function
     | Expr e -> 
       let e1, e2 = Free.factor (v) e in
-      uref (Expr e1), uref (Expr e2)
+      uexpr e1, uexpr e2
     | Var _ as v_ -> 
       if v_ = uget v then v, zero
       else failwith "internal error: scrutinee variable absent from row type"
@@ -268,33 +276,39 @@ module Temp = struct
   let factor_consts t = match uget t with
     | Var _ -> [], t
     | Expr t_ -> 
-      let gcd = List.fold_left (fun gcf e -> match fst e, gcf with
-        | (Fin, d2), (Fin, d1) ->
-            Fin, Dict.merge (fun _ o1 o2 -> match o1, o2 with
-              | Some _, Some d -> Some d
-              | _ -> None) d1 d2
-        | (Fin, d2), (Inv, d1) | (Inv, d1), (Fin, d2) -> 
-          Fin, Dict.merge (fun _ o1 o2 -> match o1, o2 with
-            | None, Some d -> Some d
-            | _ -> None) d1 d2
-        | (Inv, d2), (Inv, d1) -> 
-          Inv, Dict.merge (fun _ o1 o2 -> match o1, o2 with
-            | (Some _ | None), Some d | Some d, None -> Some d
-            | None, None -> None) d1 d2
-      ) (Inv, Dict.empty) t_ in
+      let gcd = 
+        List.fold_left (fun gcf -> fst %> Const.mul gcf) (Inv, Dict.empty) t_ in
       begin match gcd with
         | Fin, _ -> [uconst gcd]
         | Inv, d -> 
           Dict.fold (fun x f acc -> uconst (Inv, Dict.singleton x f) :: acc) d []
-      end, uref (Expr (List.map (Tuple2.map1 (fun coeff -> match coeff, gcd with
-        | (Fin, d1), (Fin, d2) -> Fin, Dict.merge (fun _ o1 o2 -> match o1, o2 with
-          | Some d, None -> Some d
-          | Some _, Some _ | None, Some _| None, None -> None) d1 d2
-        | _ -> _)) t_))
+      end, uexpr (List.map (Tuple2.map1 Const.(fun coeff -> 
+        mul coeff (add one gcd))) t_)
 
-end
+  let eq x y = is_zero (add x y)
+  let mem x = List.exists (eq x)
+  
+  let vars t = match uget t with
+    | Var _ -> [t]
+    | Expr t_ -> List.fold_left (fun acc (_, bases) -> 
+      List.fold_left (fun a v -> 
+        if mem v a then a
+        else v :: a) acc bases) [] t_
+  
+  let replace v t t0 = match uget t0 with
+    | Var _ when Uref.equal v t0 -> t
+    | Var _ -> v
+    | Expr e -> uexpr (List.map (Tuple2.map2 (List.map (fun v0 -> 
+      match uget v0 with
+      | Var _ when Uref.equal v0 t0 -> t
+      | Var _ -> v0
+      | Expr _ -> failwith "Non-normal array"))) e)
+  
+  let project vars t = match uget t with
+    | Var _ when mem t vars -> t
+    | Var _ -> one
+    | Expr e -> 
+      uexpr (List.map (Tuple2.map2 (List.filter (fun v -> mem v vars))) e)
 
-(* module BGen = Gbool.Make() *)
-
-
+end)
 
