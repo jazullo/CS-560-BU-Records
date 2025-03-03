@@ -244,7 +244,7 @@ end = struct
 
 end
 
-module BGen = Gbool.Make (struct
+module BGenAux = struct
   include Free
   let add = add_t
   let mul = mul_t
@@ -309,6 +309,91 @@ module BGen = Gbool.Make (struct
     | Var _ -> one
     | Expr e -> 
       uexpr (List.map (Tuple2.map2 (List.filter (fun v -> mem v vars))) e)
+  
+  let minlvl v1 v2 = match[@warning "-8"] uget v1, uget v2 with
+    | Var (lvl1, _), Var (lvl2, _) -> if lvl2 > lvl1 then v2 else v1
+end
 
-end)
+module BGen = struct
+  module G = Gbool.Make(BGenAux)
+  include G
+  open Free
 
+  type frozen_t = 
+    | FVar of int | FInt | FBool
+    | FFun of frozen_t * frozen_t
+    | FRec of frozen_rec
+  and frozen_rec = ((mode * (string * frozen_t) list) * int list) list
+
+  let getvar = uget %> function[@warning "-8"] Var (_, i) -> i
+
+  let rec freeze t = match uget t with
+    | S.MVar (_, i) -> FVar i
+    | MLit MInt -> FInt | MLit MBool -> FBool
+    | MFun (i, o) -> FFun (freeze i, freeze o)
+    | TRec r -> freeze_recty r
+  and freeze_recty r = match uget r with
+    | Var (_, i) -> FRec [(Inv, []), [i]]
+    | Expr e -> 
+      FRec (List.map Tuple2.(map (map Fun.id (Dict.to_list %> 
+        List.map (map2 freeze))) (List.map getvar)) e)
+  
+  let many ctx tau = 
+    let ht = Hashtbl.create 32 in
+    let idx = ref (-1) in
+    let nu () = incr idx; !idx in
+    let intern x = 
+      Hashtbl.find_option ht x |> Option.default_delayed (fun () -> 
+        let i = nu () in
+        Hashtbl.add ht x i; i) in
+    let infroz = freeze_recty %> intern in
+    let rec gather_rows t = match uget t with
+      | S.MVar _ | MLit _ -> ()
+      | MFun (i, o) -> gather_rows i; gather_rows o
+      | TRec r -> 
+        infroz r |> ignore; 
+        match uget r with
+        | Free.Var _ -> ()
+        | Free.Expr e -> 
+          List.iter (fst %> snd %> Dict.values %> Enum.iter gather_rows) e in
+    gather_rows tau;
+    Cyclic.vmap gather_rows ctx |> ignore;
+    let arr = Array.init (Hashtbl.length ht) (fun _ -> BGenAux.zero) in
+    let rec set_rows t = match uget t with
+      | S.MVar _ | MLit _ -> ()
+      | MFun (i, o) -> set_rows i; set_rows o
+      | TRec r -> 
+        arr.(Hashtbl.find ht (freeze_recty r)) <- r;
+        match uget r with
+        | Var _ -> ()
+        | Expr e -> 
+          List.iter (fst %> snd %> Dict.values %> Enum.iter set_rows) e in
+    set_rows tau;
+    Cyclic.vmap set_rows ctx |> ignore;
+    let rec row_vars t = 
+      match uget t with
+      | S.MVar _ | MLit _ -> Map.empty
+      | MFun (i, o) -> Map.union (row_vars i) (row_vars o)
+      | TRec r -> match uget r with
+        | Var (_, i) -> Map.singleton i r
+        | Expr e -> List.fold_left (fun a ((_, d), _) -> 
+          Dict.fold (fun _ -> row_vars %> Map.union) d a) Map.empty e in
+    let tau_types = row_vars tau in
+    let ctx_types = 
+      List.map (snd %> row_vars) (Cyclic.to_list ctx)
+      |> List.fold_left Map.union Map.empty in
+    let ctx_types_reduced = Map.merge (fun _ o1 o2 -> match o1, o2 with
+      | (Some _ | None), Some _ | None, None -> None
+      | Some _ as o, None -> o) ctx_types tau_types in
+    let to_list = Map.values %> List.of_enum in
+    gen (to_list tau_types) (to_list ctx_types_reduced) arr;
+    let rec reconstruct t = match uget t with
+      | S.MVar _ | MLit _ -> t
+      | MFun (i, o) -> uref (S.MFun (reconstruct i, reconstruct o))
+      | TRec r -> S.TRec begin match uget (arr.(Hashtbl.find ht (freeze_recty r))) with
+        | Free.Var _ -> r
+        | Expr e -> 
+          uref (Expr (List.map Tuple2.(map1 (map2 (Dict.map reconstruct))) e))
+      end |> uref in
+    Cyclic.vmap reconstruct ctx, reconstruct tau
+end

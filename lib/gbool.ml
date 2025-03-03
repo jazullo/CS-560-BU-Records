@@ -8,6 +8,7 @@ module type Poly = sig
   val vars : t -> t list
   val replace : t -> t -> t -> t
   val project : t list -> t -> t
+  val minlvl : t -> t -> t
 end
 
 module Make(B : Poly) = struct
@@ -39,12 +40,12 @@ module Make(B : Poly) = struct
   let factorize t = 
     let tc, tf = B.factor_consts t in
     tc @ List.unfold tf fd
-
-  let gen vars arr = 
-    let go = function
-      | [] -> () | v1 :: vs -> 
+  
+  let gen dense sparse arr = 
+    let rec go1 d1 s1 = match d1 with
+      | [] -> () | v1 :: d2 -> 
         List.iter (fun v2 -> 
-          let p3, p4, p5 = B.(ref zero, ref zero, ref zero) in
+          let p3, p4, p5, v = B.(ref zero, ref zero, ref zero, minlvl v1 v2) in
           let skip = ref false in
           let a = Array.mapi (fun i r -> 
             if !skip then arr.(i) else
@@ -59,13 +60,14 @@ module Make(B : Poly) = struct
               let t5' = product (diff t5_fac gcd) in
               if B.(is_zero t3 && is_zero t4 && is_zero t5) then arr.(i)
               else if B.(is_zero !p3 && is_zero !p4 && is_zero !p5)
-              then (p3 := t3'; p4 := t4'; p5 := t5'; B.(add (mul (product gcd) v1) t6))
+              then (p3 := t3'; p4 := t4'; p5 := t5'; B.(add (mul (product gcd) v) t6))
               else if eq t3' !p3 && eq t4' !p4 && eq t5' !p5
-              then B.(add (mul (product gcd) v1) t6)
+              then B.(add (mul (product gcd) v) t6)
               else (skip := true; arr.(i))
           ) arr in
         if !skip || B.(is_zero !p3 && is_zero !p4 && is_zero !p5) then ()
-        else Array.blit a 0 arr 0 (Array.length a)) vs in
-    go vars
+        else Array.blit a 0 arr 0 (Array.length a)) (d2 @ s1);
+        go1 d2 s1 in
+    go1 dense sparse
 
 end
