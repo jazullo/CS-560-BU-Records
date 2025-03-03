@@ -19,8 +19,11 @@ module Make(B : Poly) = struct
   
   let product = List.fold_left B.mul B.one
 
+  (* Formal derivative over a Boolean polynomial *)
   let d f x = B.(add (replace x zero f) (replace x one f))
 
+  (* Factorization core based on formal derivatives *)
+  (* "On a Polytime Factorization Algorithm from Multilinear Polynomials..." *)
   let rec fd f = match B.vars f with
     | [] -> None
     | x :: t -> 
