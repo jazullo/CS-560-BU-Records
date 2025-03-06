@@ -272,21 +272,27 @@ module BGenAux = struct
     | Var _ as v_ -> 
       if v_ = uget v then v, zero
       else failwith "internal error: scrutinee variable absent from row type"
+
+  let eq x y = is_zero (add x y)
+  let mem x = List.exists (eq x)
+  
+  let compose_const_gcd f1 f2 = match fst f1, fst f2 with
+    | Fin, Fin -> 
+      if Const.(is_zero (add f1 f2)) || Const.is_one f1 then f1
+      else if Const.is_one f2 then f2 else Const.one
+    | (Fin | Inv), Inv | Inv, Fin -> Const.(add (add f1 f2) (mul f1 f2))
   
   let factor_consts t = match uget t with
     | Var _ -> [], t
     | Expr t_ -> 
       let gcd = 
-        List.fold_left (fun gcf -> fst %> Const.mul gcf) (Inv, Dict.empty) t_ in
+        List.fold_left (Fun.flip (fst %> compose_const_gcd)) (Inv, Dict.empty) t_ in
       begin match gcd with
         | Fin, _ -> [uconst gcd]
         | Inv, d -> 
           Dict.fold (fun x f acc -> uconst (Inv, Dict.singleton x f) :: acc) d []
       end, uexpr (List.map (Tuple2.map1 Const.(fun coeff -> 
         mul coeff (add one gcd))) t_)
-
-  let eq x y = is_zero (add x y)
-  let mem x = List.exists (eq x)
   
   let vars t = match uget t with
     | Var _ -> [t]
