@@ -158,7 +158,7 @@ module Make(C : Constant) = struct
     | Var (l1, i1), Var (l2, _) -> Var (min l1 l2, i1)
     | (Var _ as v, (Expr e as x) | (Expr e as x), (Var _ as v)) -> 
       List.(find_map_opt (snd %> find_opt (Uref.uget %> (=) v))) e
-      |> Option.may (unify (uref x)); x
+      |> Option.may (var %> uexpr %> unify (uref x)); x
     | Expr e1 as x, (Expr e2 as y) -> 
       try solve (e1 @ e2); x with
       | Err -> raise @@ Common.UnifError (Printf.sprintf 
