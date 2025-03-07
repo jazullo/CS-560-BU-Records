@@ -1,6 +1,6 @@
-(ocamllex lex)
+(ocamllex lex lexgen)
 (menhir
- (modules parse)
+ (modules parse parsegen)
  (flags --explain --strict))
 (library
  (name brml)
