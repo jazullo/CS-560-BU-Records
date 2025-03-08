@@ -21,9 +21,23 @@ let%expect_test _ = g "b0"; [%expect"b0"]
 let%expect_test _ = g "{x : bool}"; [%expect"{x : bool}"]
 let%expect_test _ = g "{x : bool} b0"; [%expect"{x : bool} b0"]
 
-(* tests *)
+(* lone polynomial tests *)
 let%expect_test _ = g "b0 b1"; [%expect"b0"]
 let%expect_test _ = g "b0 + b1"; [%expect"b1"]
 
 let%expect_test _ = g "{x : bool} b0 b1"; [%expect"{x : bool} b0"]
 let%expect_test _ = g "{x : bool} (b0 + b1)"; [%expect"{x : bool} b1"]
+
+let%expect_test _ = g "b0 + {x : bool} b1"; [%expect"b1"]
+let%expect_test _ = g "{x : bool} b0 + !{x : bool} b1"; [%expect"b1"]
+
+(* let%expect_test _ = g "{x : bool} b0 + !{y : bool} b1"; [%expect"!{y : bool} b1"] *)
+(* every cofinite constant, not just top, can be seen as some infinite product of finite constants *)
+(* cofinite constants together with top should be special-cased to fix this. *)
+
+(* multiterm tests *)
+(* let%expect_test _ = g "b0, b0"; [%expect"b0, b0"] *)
+
+(* difficult factorizations *)
+(* let%expect_test _ = g "(b0 + b1 + !{}) b2 + (b0 + b1 + !{}) (b3 + b4 + !{}) b5"; [%expect""] *)
+(* add another product with (b0 + b1 + !{}) to test factorization *)
