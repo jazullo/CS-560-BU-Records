@@ -275,24 +275,17 @@ module BGenAux = struct
 
   let eq x y = is_zero (add x y)
   let mem x = List.exists (eq x)
-  
-  let compose_const_gcd f1 f2 = match fst f1, fst f2 with
-    | Fin, Fin -> 
-      if Const.(is_zero (add f1 f2)) || Const.is_one f1 then f1
-      else if Const.is_one f2 then f2 else Const.one
-    | (Fin | Inv), Inv | Inv, Fin -> Const.(add (add f1 f2) (mul f1 f2))
+
+  let union x y = Const.(add (add x y) (mul x y))
   
   let factor_consts t = match uget t with
-    | Var _ -> [], t
-    | Expr t_ -> 
-      let gcd = 
-        List.fold_left (Fun.flip (fst %> compose_const_gcd)) (Inv, Dict.empty) t_ in
-      begin match gcd with
+    | Var _ | Expr [] -> [], t
+    | Expr ((h_, _) :: t_) -> 
+      let gcd = List.fold_left (Fun.flip (fst %> union)) h_ t_ in
+      (match gcd with
         | Fin, _ -> [uconst gcd]
-        | Inv, d -> 
-          Dict.fold (fun x f acc -> uconst (Inv, Dict.singleton x f) :: acc) d []
-      end, uexpr (List.map (Tuple2.map1 Const.(fun coeff -> 
-        mul coeff (add one gcd))) t_)
+        | Inv, d -> Dict.fold (fun x f acc -> uconst (Inv, Dict.singleton x f) :: acc) d []), 
+      uexpr (List.map (Tuple2.map1 Const.(fun coeff -> union coeff (add one gcd))) t_)
   
   let vars t = match uget t with
     | Var _ -> [t]
