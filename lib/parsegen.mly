@@ -3,6 +3,8 @@
   module Brml = struct  (* evil dependency hack *)
     module Types = Types
   end
+  let c = ref (-1)
+  let unique () = incr c; !c
   let fresh () = Uref.uref (Types.S.MVar (0, unique ()))
   let bfresh () = Uref.uref (Types.Free.Var (0, unique ()))
   let ht = Hashtbl.create 32
@@ -13,6 +15,7 @@
   let intern_row x = Hashtbl.find_option ht_row x |> Option.default_delayed @@ fun () -> 
     let nu = bfresh () in
     Hashtbl.add ht_row x nu; nu
+  let then_clear x = Hashtbl.(clear ht; clear ht_row); c := (-1); x
 %}
 
 
@@ -25,8 +28,8 @@
 
 system: 
   | separated_pair(separated_list(COMMA, rowtype), SEMICOLON, list(BID)) EOF
-    {Tuple2.map2 (List.map (Hashtbl.find ht_row)) $1}
-  | separated_list(COMMA, rowtype) EOF {$1, List.of_enum (Hashtbl.values ht_row)}
+    {then_clear (Tuple2.map2 (List.map (Hashtbl.find ht_row)) $1)}
+  | separated_list(COMMA, rowtype) EOF {then_clear ($1, List.of_enum (Hashtbl.values ht_row))}
 
 mltype: 
   | mltype1 ARROW mltype {Uref.uref (Types.S.MFun ($1, $3))}
