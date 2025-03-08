@@ -206,7 +206,7 @@ end
 and Show : sig
   val print_ty : 'a BatInnerIO.output -> S.t -> unit
   val ty : S.t -> string
-  val print_rec_ty : 'a BatInnerIO.output -> Free.t -> unit
+  val print_rec_ty : ?delim:bool -> 'a BatInnerIO.output -> Free.t -> unit
 end = struct
 
   open Printf
@@ -229,11 +229,11 @@ end = struct
       fprintf out ")"
     | S.TRec r -> print_rec_ty out r
   
-  and print_rec_ty out r = 
+  and print_rec_ty ?(delim=true) out r = 
     Unify.simplify r;
-    fprintf out "<";
+    if delim then fprintf out "<";
     Free.pretty_anf out r;
-    fprintf out ">"
+    if delim then fprintf out ">"
   
   let print_ty = print_t_fst
 

@@ -20,11 +20,13 @@
 %token ARROW ADD OR COMMA SEMICOLON INT BOOL COLON BANG
 %token<string> ID AID BID
 %left ADD OR
-%start<Types.Free.t list * string list> system
+%start<Types.Free.t list * Types.Free.t list> system
 %%
 
-%inline disjoin(a, b, c): a {$1} | b {$1} | c {$1}
-system: separated_pair(separated_list(COMMA, rowtype), SEMICOLON, list(BID)) EOF {$1}
+system: 
+  | separated_pair(separated_list(COMMA, rowtype), SEMICOLON, list(BID)) EOF
+    {Tuple2.map2 (List.map (Hashtbl.find ht_row)) $1}
+  | separated_list(COMMA, rowtype) EOF {$1, List.of_enum (Hashtbl.values ht_row)}
 
 mltype: 
   | mltype1 ARROW mltype {Uref.uref (Types.S.MFun ($1, $3))}
@@ -45,6 +47,7 @@ rowtype:
         List.fold_left Types.Free.mul_t h t }
 
 (* must be factored out due to menhir bug *)
+%inline disjoin(a, b, c): a {$1} | b {$1} | c {$1}
 %inline rowtype1: 
   | boption(BANG) LBRACE separated_nonempty_list(COMMA, 
     separated_pair(disjoin(ID, AID, BID), COLON, mltype)) RBRACE

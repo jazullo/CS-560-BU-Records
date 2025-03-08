@@ -11,8 +11,10 @@ rule token = parse
   | '$' {EOF}
   | whitespace {token lexbuf}
   | eol {token lexbuf}
-  | ("a" id) as x {AID x}
-  | ("b" id) as x {BID x}
+  | "int" {INT}
+  | "bool" {BOOL}
+  | ("a" ['a'-'z' 'A'-'Z' '_' '0'-'9']*) as x {AID x}
+  | ("b" ['a'-'z' 'A'-'Z' '_' '0'-'9']*) as x {BID x}
   
   | "(" {LPAREN}
   | ")" {RPAREN}
@@ -25,8 +27,6 @@ rule token = parse
   | ";" {SEMICOLON}
 
   | id as x {ID x}
-  | "int" {INT}
-  | "bool" {BOOL}
   | ":" {COLON}
 
   | "<" {LANGLE}

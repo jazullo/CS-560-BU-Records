@@ -1,0 +1,5 @@
+(library
+ (name test)
+ (libraries batteries brml)
+ (inline_tests)
+ (preprocess (pps ppx_expect)))
