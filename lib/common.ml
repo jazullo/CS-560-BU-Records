@@ -13,4 +13,5 @@ let print_span out loc =
   else fprintf out "Lines %d-%d, " l1 l2;
   fprintf out "Columns %d-%d\n" c1 c2
 
-let level = ref 0
+let level = ref 0     (* generalization with __levels__ *)
+let bgen = ref true   (* enable B-generalization *)
