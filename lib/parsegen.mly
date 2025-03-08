@@ -20,13 +20,11 @@
 %token ARROW ADD OR COMMA SEMICOLON INT BOOL COLON BANG
 %token<string> ID AID BID
 %left ADD OR
-%start<(Types.S.t, Types.Free.t) Either.t list * string list> system
+%start<Types.Free.t list * string list> system
 %%
 
-(* must be factored out due to menhir bug *)
 %inline disjoin(a, b, c): a {$1} | b {$1} | c {$1}
-system: separated_pair(separated_list(COMMA, anytype), SEMICOLON, list(disjoin(ID, AID, BID))) EOF {$1}
-%inline anytype: mltype {Either.Left $1} | rowtype {Either.Right $1}
+system: separated_pair(separated_list(COMMA, rowtype), SEMICOLON, list(BID)) EOF {$1}
 
 mltype: 
   | mltype1 ARROW mltype {Uref.uref (Types.S.MFun ($1, $3))}
@@ -46,8 +44,10 @@ rowtype:
       { let[@warning "-8"] (h :: t) = $1 in
         List.fold_left Types.Free.mul_t h t }
 
+(* must be factored out due to menhir bug *)
 %inline rowtype1: 
-  | boption(BANG) LBRACE separated_nonempty_list(COMMA, separated_pair(ID, COLON, mltype)) RBRACE
+  | boption(BANG) LBRACE separated_nonempty_list(COMMA, 
+    separated_pair(disjoin(ID, AID, BID), COLON, mltype)) RBRACE
     {Types.(Free.uconst ((if $1 then Inv else Fin), Dict.of_list $3))}
   | LPAREN rowtype RPAREN {$2}
   | BID {intern_row $1}
