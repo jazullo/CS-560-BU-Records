@@ -207,6 +207,7 @@ and Show : sig
   val print_ty : 'a BatInnerIO.output -> S.t -> unit
   val ty : S.t -> string
   val print_rec_ty : ?delim:bool -> 'a BatInnerIO.output -> Free.t -> unit
+  val recty : Free.t -> string
 end = struct
 
   open Printf
@@ -241,18 +242,25 @@ end = struct
     let s = IO.output_string () in
     print_ty s ty;
     IO.close_out s
+  
+  let recty ty = 
+    let s = IO.output_string () in
+    print_rec_ty s ty;
+    IO.close_out s
 
 end
 
 module BGenAux = struct
   include Free
+  let simplify = Unify.simplify
   let add = add_t
   let mul = mul_t
-  let zero = uref (Expr [])
+  let zero_ = uref (Expr [])
+  let zero = uref (Expr [(Fin, Dict.empty), []])
   let one = uref (Expr [(Inv, Dict.empty), []])
   let is_zero t = 
     Unify.simplify t;
-    Uref.equal t zero
+    Uref.uget t = Uref.uget zero || Uref.uget t = Uref.uget zero_
   let is_one t = 
     let t3 = add t one in
     is_zero t3
@@ -260,15 +268,18 @@ module BGenAux = struct
     let s = IO.output_string () in
     Show.print_rec_ty s rho;
     IO.close_out s
-  let uexpr e = 
-    let t = uref (Expr e) in
-    Unify.simplify t;
-    t
+  let uexpr = function
+    | [] -> zero
+    | e -> 
+      let t = uref (Expr e) in
+      Unify.simplify t; t
   
   let bmatch v = uget %> function
     | Expr e -> 
-      let e1, e2 = Free.factor (v) e in
-      uexpr e1, uexpr e2
+      let e1, e2 = Tuple2.mapn uexpr (Free.factor (v) e) in
+      (* Show.recty e1 |> print_endline;
+      Show.recty e2 |> print_endline; *)
+      Unify.(simplify e1; simplify e2); (e1, e2)
     | Var _ as v_ -> 
       if v_ = uget v then v, zero
       else failwith "internal error: scrutinee variable absent from row type"
