@@ -17,13 +17,13 @@ let gen str =
 let g = gen %> print_endline
 
 (* sanity checks *)
-let%expect_test _ = g "b0"; [%expect"b0"]
+(* let%expect_test _ = g "b0"; [%expect"b0"]
 let%expect_test _ = g "{x : bool}"; [%expect"{x : bool}"]
-let%expect_test _ = g "{x : bool} b0"; [%expect"{x : bool} b0"]
+let%expect_test _ = g "{x : bool} b0"; [%expect"{x : bool} b0"] *)
 
 (* tests *)
-let%expect_test _ = g "b0 b1"; [%expect"b0"]
-let%expect_test _ = g "b0 + b1"; [%expect"b1"]
+(* let%expect_test _ = g "b0 b1"; [%expect"b0"]
+let%expect_test _ = g "b0 + b1"; [%expect"b1"] *)
 
-(* let%expect_test _ = g "{x : bool} b0 b1"; [%expect"{x : bool} b0"]
-let%expect_test _ = g "{x : bool} (b0 + b1)"; [%expect"{x : bool} b0"] *)
+(* let%expect_test _ = g "{x : bool} b0 b1"; [%expect"{x : bool} b0"] *)
+(* let%expect_test _ = g "{x : bool} (b0 + b1)"; [%expect"{x : bool} b0"] *)

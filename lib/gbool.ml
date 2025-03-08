@@ -15,10 +15,14 @@ module Make(B : Poly) = struct
 
   let eq x y = B.(is_zero (add x y))
   let mem x = List.exists (eq x)
-  let inter l1 l2 = List.filter (fun x -> mem x l2) l1
-  let diff l1 l2 = List.filter (not % fun x -> mem x l2) l1
+  let inter o1 o2 = match o1, o2 with
+    | Some l1, Some l2 -> Some (List.filter (fun x -> mem x l2) l1)
+    | (Some _ | None as o), None | None, (Some _ as o) -> o
+  let diff o1 o2 = match o1, o2 with
+    | Some l1, Some l2 -> Some (List.filter (not % fun x -> mem x l2) l1)
+    | (Some _ | None as o), None | (None as o), Some _ -> o
   
-  let product = List.fold_left B.mul B.one
+  let product = Option.map_default (List.fold_left B.mul B.one) B.zero
 
   (* Formal derivative over a Boolean polynomial *)
   let d f x = B.(add (replace x zero f) (replace x one f))
@@ -37,9 +41,10 @@ module Make(B : Poly) = struct
       | [] -> None
       | _ :: _ -> Some B.(project same f, project other f)
 
-  let factorize t = 
-    let tc, tf = B.factor_consts t in
-    tc @ List.unfold tf fd
+  let factorize t =  (* Bot = None because of infinite factorization *)
+    if B.is_zero t then None else
+      let tc, tf = B.factor_consts t in
+      Some (tc @ List.unfold tf fd)
   
   let gen dense sparse arr = 
     let rec go1 d1 s1 = match d1 with
