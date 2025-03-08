@@ -255,12 +255,11 @@ module BGenAux = struct
   let simplify = Unify.simplify
   let add = add_t
   let mul = mul_t
-  let zero_ = uref (Expr [])
   let zero = uref (Expr [(Fin, Dict.empty), []])
   let one = uref (Expr [(Inv, Dict.empty), []])
   let is_zero t = 
     Unify.simplify t;
-    Uref.uget t = Uref.uget zero || Uref.uget t = Uref.uget zero_
+    Uref.uget t = Uref.uget zero
   let is_one t = 
     let t3 = add t one in
     is_zero t3
@@ -277,8 +276,6 @@ module BGenAux = struct
   let bmatch v = uget %> function
     | Expr e -> 
       let e1, e2 = Tuple2.mapn uexpr (Free.factor (v) e) in
-      (* Show.recty e1 |> print_endline;
-      Show.recty e2 |> print_endline; *)
       Unify.(simplify e1; simplify e2); (e1, e2)
     | Var _ as v_ -> 
       if v_ = uget v then v, zero

@@ -61,14 +61,6 @@ module Make(B : Poly) = struct
               let t3_fac, t4_fac, t5_fac = 
                 factorize t3, factorize t4, factorize t5 in
               let gcd = inter t3_fac (inter t4_fac t5_fac) in
-
-              (* if B.is_zero t3 then print_endline "hit1";
-              if B.is_zero t4 then print_endline "hit2";
-              if B.is_zero t5 then print_endline "hit3"; *)
-
-              (* let[@warning "-8"] (Some lst) = gcd in
-              Printf.printf "%d\n" (List.length lst); *)
-
               let t3' = product (diff t3_fac gcd) in
               let t4' = product (diff t4_fac gcd) in
               let t5' = product (diff t5_fac gcd) in
