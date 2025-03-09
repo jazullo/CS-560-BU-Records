@@ -62,13 +62,43 @@ module Make(B : Poly) = struct
                 factorize t3, factorize t4, factorize t5 in
               let gcd = inter t3_fac (inter t4_fac t5_fac) in
 
-              (* List.iter (B.to_string %> print_endline) (fst t5_fac);
-              print_endline "---";
-              List.iter (B.to_string %> print_endline) (snd t5_fac); *)
+              (* List.iter (B.to_string %> print_endline) (fst gcd);
+              print_endline "--- gcd";
+              List.iter (B.to_string %> print_endline) (snd gcd);
+              print_newline (); *)
+
+              (* List.iter (B.to_string %> print_endline) (fst t3_fac);
+              print_endline "--- t3";
+              List.iter (B.to_string %> print_endline) (snd t3_fac);
+              print_endline " \n===\n ";
+              List.iter (B.to_string %> print_endline) (fst t4_fac);
+              print_endline "--- t4";
+              List.iter (B.to_string %> print_endline) (snd t4_fac);
+              print_endline " \n===\n ";
+              List.iter (B.to_string %> print_endline) (fst t5_fac);
+              print_endline "--- t5";
+              List.iter (B.to_string %> print_endline) (snd t5_fac);
+              print_newline (); *)
 
               let t3' = product (diff t3_fac gcd) in
               let t4' = product (diff t4_fac gcd) in
               let t5' = product (diff t5_fac gcd) in
+
+              (* List.iter (B.to_string %> print_endline) (fst (diff t3_fac gcd));
+              print_endline "--- t3";
+              List.iter (B.to_string %> print_endline) (snd (diff t3_fac gcd));
+              print_endline " \n===\n ";
+              List.iter (B.to_string %> print_endline) (fst (diff t4_fac gcd));
+              print_endline "--- t4";
+              List.iter (B.to_string %> print_endline) (snd (diff t4_fac gcd));
+              print_endline " \n===\n ";
+              List.iter (B.to_string %> print_endline) (fst (diff t5_fac gcd));
+              print_endline "--- t5";
+              List.iter (B.to_string %> print_endline) (snd (diff t5_fac gcd));
+              print_newline (); *)
+
+
+
               if B.(is_zero t3 && is_zero t4 && is_zero t5) then arr.(i)
               else if B.(is_zero !p3 && is_zero !p4 && is_zero !p5)
               then (p3 := t3'; p4 := t4'; p5 := t5'; B.(add (mul (product gcd) v) t6))

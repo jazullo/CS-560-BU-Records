@@ -307,7 +307,7 @@ module BGenAux = struct
     | ((Inv, _) :: _), [Fin, _ as c1] -> List.filter Const.(extract_consts %> mul c1 %> add c1 %> is_zero) t1
     | [], _ -> [one] | _, [] -> [one]
   let diff_consts t1 t2 = match[@warning "-8"] Tuple2.mapn (List.map extract_consts) (t1, t2) with
-    | [Fin, _ as c1], [Fin, _ as c2] -> [uconst Const.(mul c1 (add one c2))]
+    | [Fin, _ as c1], [Fin, _ as c2] -> [uconst Const.(mul c2 (add one c1))]
     | ((Inv, _) :: _), ((Inv, _) :: _) -> List.filter (fun c2 -> not (List.exists (eq c2) t1)) t2
     | [Fin, _ as c1], ((Inv, _) :: _ as c2s) -> [uconst (List.fold_left union c1 c2s)]
     | ((Inv, _) :: _), [Fin, _ as c1] -> List.filter Const.(extract_consts %> mul c1 %> is_zero %> not) t1
