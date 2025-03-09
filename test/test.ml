@@ -33,8 +33,29 @@ let%expect_test _ = g "{x : bool} b0 + !{x : bool} b1"; [%expect"b1"]
 let%expect_test _ = g "{x : bool} b0 + !{y : bool} b1"; [%expect"!{y : bool} b1"]
 
 (* multiterm tests *)
-(* let%expect_test _ = g "b0, b0"; [%expect"b0, b0"] *)
+let%expect_test _ = g "b0, b0"; [%expect"b0, b0"]
+let%expect_test _ = g "{x : bool} b0, b0"; [%expect"{x : bool} b0, b0"]
+let%expect_test _ = g "b0, {x : bool} b0"; [%expect"b0, {x : bool} b0"]
+let%expect_test _ = g "{x : bool, y : bool} b0, {x : bool} b0";
+  [%expect"{x : bool, y : bool} b0, {x : bool} b0"]
+let%expect_test _ = g "b0 + b1, b0 + b1"; [%expect"b1, b1"]
+let%expect_test _ = g "b0 b1, b0 b1"; [%expect"b0, b0"]
 
-(* difficult factorizations *)
+let%expect_test _ = g "{x : bool} (b0 + b1), {x : bool} (b0 + b1)";
+  [%expect"{x : bool} b1, {x : bool} b1"]
+
+(* multiple variables involving factorization of coefficients *)
+let%expect_test _ = g "{x : bool} (b0 + b1), {x : bool} (b0 + b1)";
+  [%expect"{x : bool} b1, {x : bool} b1"]
+(* let%expect_test _ = g "{x : bool} (b0 + b1), {y : bool} (b0 + b1)";
+  [%expect"{x : bool} b1, {y : bool} b1"] *)
+(* let%expect_test _ = g "{x : bool} (b0 + b1), {x : bool, y : bool} (b0 + b1)";
+  [%expect"{x : bool} b1, {x : bool, y : bool} b1"] *)
+(* let%expect_test _ = g "b0 + b1, b0 b1";
+  [%expect"b0 + b1, b0 b1"] *)
+
+
+
+(* factorization of polynomials *)
 (* let%expect_test _ = g "(b0 + b1 + !{}) b2 + (b0 + b1 + !{}) (b3 + b4 + !{}) b5"; [%expect""] *)
 (* add another product with (b0 + b1 + !{}) to test factorization *)
