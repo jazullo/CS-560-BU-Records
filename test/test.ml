@@ -30,8 +30,7 @@ let%expect_test _ = g "{x : bool} (b0 + b1)"; [%expect"{x : bool} b1"]
 
 let%expect_test _ = g "b0 + {x : bool} b1"; [%expect"b1"]
 let%expect_test _ = g "{x : bool} b0 + !{x : bool} b1"; [%expect"b1"]
-
-(* let%expect_test _ = g "{x : bool} b0 + !{y : bool} b1"; [%expect"!{y : bool} b1"] *)
+let%expect_test _ = g "{x : bool} b0 + !{y : bool} b1"; [%expect"!{y : bool} b1"]
 
 (* multiterm tests *)
 (* let%expect_test _ = g "b0, b0"; [%expect"b0, b0"] *)
