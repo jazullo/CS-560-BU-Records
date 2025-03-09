@@ -32,8 +32,6 @@ let%expect_test _ = g "b0 + {x : bool} b1"; [%expect"b1"]
 let%expect_test _ = g "{x : bool} b0 + !{x : bool} b1"; [%expect"b1"]
 
 (* let%expect_test _ = g "{x : bool} b0 + !{y : bool} b1"; [%expect"!{y : bool} b1"] *)
-(* every cofinite constant, not just top, can be seen as some infinite product of finite constants *)
-(* cofinite constants together with top should be special-cased to fix this. *)
 
 (* multiterm tests *)
 (* let%expect_test _ = g "b0, b0"; [%expect"b0, b0"] *)
