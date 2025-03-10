@@ -11,7 +11,7 @@ let gen str =
   let lexbuf = Lexing.from_string (str^"$") in
   let rows, vars = Parsegen.system Lexgen.token lexbuf in
   let arr = Array.of_list rows in
-  Types.BGen.gen vars [] arr;
+  Gbool.gen vars [] arr;
   pp_string arr
 
 let g = gen %> print_endline

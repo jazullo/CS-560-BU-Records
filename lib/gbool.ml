@@ -71,26 +71,105 @@ open Uref
 
 let getvar = uget %> function[@warning "-8"] Free.Var (_, i) -> i
 
+(* Main algorithm *)
 let gen dense sparse arr = 
   let rec go1 d1 s1 = match d1 with
     | [] -> () | v1 :: d2 -> 
       d2 @ s1 |> List.iter @@ fun v2 -> 
         let v, p0 = B.minlvl v1 v2, Free.fresh () in
-        let p3, p4, p5 as ps = Free.(fresh (), fresh (), fresh ()) in
-        let h3, h4, h5 as hs = 
-          Tuple3.mapn (fun p -> Hashtbl.of_list [getvar p, p]) ps in
-        begin try 
+        let ps = Free.[fresh (); fresh (); fresh ()] in
+        let ht = Hashtbl.of_list (List.map (fun p -> getvar p, p) ps) in
+        begin try
           let a = arr |> Array.map @@ fun r -> 
             let t1, t2 = B.bmatch v1 r in
             let t3, t4 = B.bmatch v2 t1 in
             let t5, t6 = B.bmatch v2 t2 in
-            Free.unify ~vars:h3 (B.mul p0 p3) t3;
-            Free.unify ~vars:h4 (B.mul p0 p4) t4;
-            Free.unify ~vars:h5 (B.mul p0 p5) t5;
+            let u = B.mul p0 %> Free.unify ~vars:ht in
+            List.iter2 u ps [t3; t4; t5];
             B.(add (mul p0 v) t6) in
-          let sub_zero _ u = uset u (uget B.zero) in
-          ignore (Tuple3.mapn (Hashtbl.iter sub_zero) hs);
+          Hashtbl.iter (fun _ u -> uset u (uget B.zero)) ht;
           Array.blit a 0 arr 0 (Array.length a)
         with Common.UnifError _ -> () end;
       go1 d2 s1 in
   go1 dense sparse
+
+(* Mapping types to and from the AST *)
+open Free
+
+type frozen_t = 
+  | FVar of int | FInt | FBool
+  | FFun of frozen_t * frozen_t
+  | FRec of frozen_rec
+and frozen_rec = ((mode * (string * frozen_t) list) * int list) list
+
+let getvar = uget %> function[@warning "-8"] Var (_, i) -> i
+
+let rec freeze t = match uget t with
+  | S.MVar (_, i) -> FVar i
+  | MLit MInt -> FInt | MLit MBool -> FBool
+  | MFun (i, o) -> FFun (freeze i, freeze o)
+  | TRec r -> freeze_recty r
+and freeze_recty r = match uget r with
+  | Var (_, i) -> FRec [(Inv, []), [i]]
+  | Expr e -> 
+    FRec (List.map Tuple2.(map (map Fun.id (Dict.to_list %> 
+      List.map (map2 freeze))) (List.map getvar)) e)
+
+let many ctx tau = 
+  let ht = Hashtbl.create 32 in
+  let idx = ref (-1) in
+  let nu () = incr idx; !idx in
+  let intern x = 
+    Hashtbl.find_option ht x |> Option.default_delayed (fun () -> 
+      let i = nu () in
+      Hashtbl.add ht x i; i) in
+  let infroz = freeze_recty %> intern in
+  let rec gather_rows t = match uget t with
+    | S.MVar _ | MLit _ -> ()
+    | MFun (i, o) -> gather_rows i; gather_rows o
+    | TRec r -> 
+      infroz r |> ignore; 
+      match uget r with
+      | Free.Var _ -> ()
+      | Free.Expr e -> 
+        List.iter (fst %> snd %> Dict.values %> Enum.iter gather_rows) e in
+  gather_rows tau;
+  Cyclic.vmap (fst %> gather_rows) ctx |> ignore;
+  let arr = Array.init (Hashtbl.length ht) (fun _ -> B.zero) in
+  let rec set_rows t = match uget t with
+    | S.MVar _ | MLit _ -> ()
+    | MFun (i, o) -> set_rows i; set_rows o
+    | TRec r -> 
+      arr.(Hashtbl.find ht (freeze_recty r)) <- r;
+      match uget r with
+      | Var _ -> ()
+      | Expr e -> 
+        List.iter (fst %> snd %> Dict.values %> Enum.iter set_rows) e in
+  set_rows tau;
+  Cyclic.vmap (fst %> set_rows) ctx |> ignore;
+  let rec row_vars t = 
+    match uget t with
+    | S.MVar _ | MLit _ -> Map.empty
+    | MFun (i, o) -> Map.union (row_vars i) (row_vars o)
+    | TRec r -> match uget r with
+      | Var (_, i) -> Map.singleton i r
+      | Expr e -> List.fold_left (fun a ((_, d), _) -> 
+        Dict.fold (fun _ -> row_vars %> Map.union) d a) Map.empty e in
+  let tau_vars = row_vars tau in
+  let ctx_vars = 
+    List.map (snd %> fst %> row_vars) (Cyclic.to_list ctx)
+    |> List.fold_left Map.union Map.empty in
+  let ctx_types_reduced = Map.merge (fun _ o1 o2 -> match o1, o2 with
+    | (Some _ | None), Some _ | None, None -> None
+    | Some _ as o, None -> o) ctx_vars tau_vars in
+  let to_list = Map.values %> List.of_enum in
+  gen (to_list tau_vars) (to_list ctx_types_reduced) arr;
+  let rec reconstruct t = match uget t with
+    | S.MVar _ | MLit _ -> t
+    | MFun (i, o) -> uref (S.MFun (reconstruct i, reconstruct o))
+    | TRec r -> S.TRec begin match uget (arr.(Hashtbl.find ht (freeze_recty r))) with
+      | Free.Var _ -> r
+      | Expr e -> 
+        uref (Expr (List.map Tuple2.(map1 (map2 (Dict.map reconstruct))) e))
+    end |> uref in
+  Cyclic.vmap (Tuple2.map1 reconstruct) ctx, reconstruct tau
