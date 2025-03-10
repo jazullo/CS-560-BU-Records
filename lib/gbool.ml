@@ -78,7 +78,7 @@ let gen dense sparse arr =
       d2 @ s1 |> List.iter @@ fun v2 -> 
         let v, p0 = B.minlvl v1 v2, Free.fresh () in
         let ps = Free.[fresh (); fresh (); fresh ()] in
-        let ht = Hashtbl.of_list (List.map (fun p -> getvar p, p) ps) in
+        let ht = Hashtbl.of_list (List.map (fun p -> getvar p, p) (p0 :: ps)) in
         begin try
           let a = arr |> Array.map @@ fun r -> 
             let t1, t2 = B.bmatch v1 r in
