@@ -134,9 +134,10 @@ module Make(C : Constant) = struct
     |> Map.enum |> List.of_enum |> List.sort (fun x y -> compare (snd x) (snd y))
     |> List.map fst
   
-  let select_var e = 
+  let select_var ~vars e = 
     List.map snd e |> List.filter (Fun.negate List.is_empty)
-    |> smallterm |> counts e |> List.hd
+    |> smallterm |> counts e
+    |> List.find_opt (getvar %> Option.map_default Hashtbl.mem (fun _ -> true) vars)
   
   let factor u = 
     List.partition_map (fun (coeff, vars) -> 
@@ -145,22 +146,31 @@ module Make(C : Constant) = struct
       | [_], part -> Left (coeff, part)
     )
   
-  let rec solve e0 = match simp e0 with
+  let rec solve ~vars e0 = match simp e0 with
     | [] -> ()
     | [_, []] -> raise Err
-    | e -> 
-      let u = select_var e in
-      let t1, t2 = factor u e in
-      solve (mul t2 (one @ t1));
-      uset u (Expr (simp (t2 @ mul (var (fresh ())) (one @ t1))))
+    | e -> match select_var ~vars e with
+      | None -> raise Err
+      | Some u -> 
+        let[@warning "-8"] (Var (lvl, uid)) = uget u in
+        let t1, t2 = factor u e in
+        Option.may (fun vs -> Hashtbl.remove vs uid) vars;
+        solve ~vars (mul t2 (one @ t1));
+        let lvl', uid' = !Common.level, unique () in
+        let u' = uvar (min lvl lvl') uid' in
+        Option.may (fun vs -> Hashtbl.add vs (getvar u') u') vars;
+        uset u (Expr (simp (t2 @ mul (var u') (one @ t1))))
   
-  let rec unify r = unite ~sel:(curry @@ function
-    | Var (l1, i1), Var (l2, _) -> Var (min l1 l2, i1)
-    | (Var _ as v, (Expr e as x) | (Expr e as x), (Var _ as v)) -> 
-      List.(find_map_opt (snd %> find_opt (Uref.uget %> (=) v))) e
-      |> Option.may (var %> uexpr %> unify (uref x)); x
+  let rec unify ?(vars=None) r = unite ~sel:(curry @@ function
+    | Var (l1, i1), Var (l2, _) -> 
+      Option.may (fun vs -> Hashtbl.remove vs i1) vars;
+      Var (min l1 l2, i1)
+    | (Var (_, i1) as v, (Expr e as x) | (Expr e as x), (Var (_, i1) as v)) -> 
+      List.(find_map_opt (snd %> find_opt (Uref.uget %> (=) v))) e |> (function
+        | Some u -> u |> var %> uexpr %> unify ~vars (uref x)
+        | None -> Option.may (fun vs -> Hashtbl.remove vs i1) vars); x
     | Expr e1 as x, (Expr e2 as y) -> 
-      try solve (e1 @ e2); x with
+      try solve ~vars (e1 @ e2); x with
       | Err -> raise @@ Common.UnifError (Printf.sprintf 
         "Incompatible Set Types <%s> and <%s>."
         (string_anf (uref x))

@@ -32,7 +32,7 @@ and Free : sig  (* Boolean unifier for infinite boolean rings *)
     | Var of int * int
     | Expr of ((mode * S.t Dict.t) * t list) list  (* as dicts with complement flag *)
   
-  val unify : t -> t -> unit
+  val unify : ?vars:(int, Free.t) Hashtbl.t option -> t -> t -> unit
   val simplify : _t -> _t
   val fresh : unit -> t
   val add_t : t -> t -> t
