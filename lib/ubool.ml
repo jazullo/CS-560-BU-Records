@@ -166,7 +166,7 @@ module Make(C : Constant) = struct
       Option.may (fun vs -> Hashtbl.remove vs i1) vars;
       Var (min l1 l2, i1)
     | (Var (_, i1) as v, (Expr e as x) | (Expr e as x), (Var (_, i1) as v)) -> 
-      List.(find_map_opt (snd %> find_opt (Uref.uget %> (=) v))) e |> (function
+      (match List.(find_map_opt (snd %> find_opt (Uref.uget %> (=) v))) (simp e) with
         | None -> Option.may (fun vs -> Hashtbl.remove vs i1) vars  
         | Some u -> u |> var %> uexpr %> match vars with 
           | None -> unify (uref x)
