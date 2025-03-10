@@ -119,6 +119,9 @@ module Make(C : Constant) = struct
     IO.close_out out
   
   let print_anf u = print_endline (string_anf u)
+
+  let del uid vars = Option.may (fun vs -> Hashtbl.remove vs uid) vars
+  let contained i e = List.exists (snd %> List.exists (getvar %> (=) i)) (simp e)
   
   let[@warning "-8"] smallterm (x :: xs) = 
     List.fold_left (fun t t' -> 
@@ -154,29 +157,28 @@ module Make(C : Constant) = struct
       | Some u -> 
         let[@warning "-8"] (Var (lvl, uid)) = uget u in
         let t1, t2 = factor u e in
-        Option.may (fun vs -> Hashtbl.remove vs uid) vars;
-        solve ~vars (mul t2 (one @ t1));
+        del uid vars; solve ~vars (mul t2 (one @ t1));
         let lvl', uid' = !Common.level, unique () in
         let u' = uvar (min lvl lvl') uid' in
         Option.may (fun vs -> Hashtbl.add vs (getvar u') u') vars;
         uset u (Expr (simp (t2 @ mul (var u') (one @ t1))))
   
-  let rec unify ?vars r = unite ~sel:(curry @@ function
-    | Var (l1, i1), Var (l2, _) -> 
-      Option.may (fun vs -> Hashtbl.remove vs i1) vars;
-      Var (min l1 l2, i1)
-    | (Var (_, i1) as v, (Expr e as x) | (Expr e as x), (Var (_, i1) as v)) -> 
-      (match List.(find_map_opt (snd %> find_opt (Uref.uget %> (=) v))) (simp e) with
-        | None -> Option.may (fun vs -> Hashtbl.remove vs i1) vars  
-        | Some u -> u |> var %> uexpr %> match vars with 
-          | None -> unify (uref x)
-          | Some vars -> unify ~vars (uref x)); x
+  let rec unify ?vars r1 r2 = match uget r1, uget r2 with
+    | Var (l1, i1) as v1, (Var (l2, i2) as v2) -> 
+      let i, v = if l1 <= l2 then i2, v1 else i1, v2 in
+      del i vars; unite ~sel:(fun _ _ -> v) r1 r2
+    | Var (_, i), Expr e when contained i e -> go vars (uexpr (var r1)) r2
+    | Var (_, i), Expr _ -> del i vars; uset r1 (uget r2)
+    | Expr e, Var (_, i) when contained i e -> go vars r1 (uexpr (var r2))
+    | Expr _, Var (_, i) -> del i vars; uset r2 (uget r1)
     | Expr e1 as x, (Expr e2 as y) -> 
-      try solve ~vars (e1 @ e2); x with
+      try solve ~vars (e1 @ e2) with
       | Err -> raise @@ Common.UnifError (Printf.sprintf 
         "Incompatible Set Types <%s> and <%s>."
         (string_anf (uref x))
         (string_anf (uref y)))
-  ) r
+  and go vars r = match vars with
+    | Some vars -> unify ~vars r
+    | None -> unify r
 
 end
