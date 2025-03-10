@@ -32,7 +32,7 @@ and Free : sig  (* Boolean unifier for infinite boolean rings *)
     | Var of int * int
     | Expr of ((mode * S.t Dict.t) * t list) list  (* as dicts with complement flag *)
   
-  val unify : ?vars:(int, Free.t) Hashtbl.t option -> t -> t -> unit
+  val unify : ?vars:(int, Free.t) Hashtbl.t -> t -> t -> unit
   val simplify : _t -> _t
   val fresh : unit -> t
   val add_t : t -> t -> t
@@ -250,96 +250,7 @@ end = struct
 
 end
 
-module BGenAux = struct
-  include Free
-  let simplify = Unify.simplify
-  let add = add_t
-  let mul = mul_t
-  let zero = uref (Expr [(Fin, Dict.empty), []])
-  let one = uref (Expr [(Inv, Dict.empty), []])
-  let uexpr = function
-  | [] -> zero
-  | e -> 
-    let t = uref (Expr e) in
-    Unify.simplify t; t
-  let is_zero t = 
-    Unify.simplify t;
-    Uref.uget t = Uref.uget zero || Uref.uget t = Uref.uget (uexpr [])
-  let is_one t = 
-    let t3 = add t one in
-    is_zero t3
-  let to_string rho = 
-    let s = IO.output_string () in
-    Show.print_rec_ty s rho;
-    IO.close_out s
-  
-  let bmatch v = uget %> function
-    | Expr e -> 
-      let e1, e2 = Tuple2.mapn uexpr (Free.factor (v) e) in
-      Unify.(simplify e1; simplify e2); (e1, e2)
-    | Var _ as v_ -> 
-      if v_ = uget v then v, zero
-      else failwith "internal error: scrutinee variable absent from row type"
-
-  let eq x y = is_zero (add x y)
-  let mem x = List.exists (eq x)
-
-  let union x y = Const.(add (add x y) (mul x y))
-  
-  let factor_consts t = match uget t with
-    | Var _ -> [one], t
-    | Expr [] -> [zero], zero  (* technically unreachable *)
-    | Expr [_] when is_zero t -> [zero], zero
-    | Expr ((h_, _) :: t_) -> 
-      let gcd = List.fold_left (Fun.flip (fst %> union)) h_ t_ in
-      (match gcd with
-        | Fin, _ -> [uconst gcd]
-        | Inv, d -> Dict.fold (fun x f acc -> uconst (Inv, Dict.singleton x f) :: acc) d []), 
-      uexpr (List.map (Tuple2.map1 Const.(fun coeff -> union coeff (add one gcd))) t_)
-  
-  let extract_consts = uget %> function[@warning "-8"]
-    | Expr [c1, []] -> c1
-    | Expr [] -> Const.zero
-  let inter_consts t1 t2 = match[@warning "-8"] Tuple2.mapn (List.map extract_consts) (t1, t2) with
-    | [Fin, _ as c1], [Fin, _ as c2] -> [uconst (union c1 c2)]
-    | ((Inv, _) :: _), ((Inv, _) :: _) -> List.filter (fun c2 -> List.exists (eq c2) t1) t2
-    | [Fin, _ as c1], ((Inv, _) :: _) -> List.filter Const.(extract_consts %> mul c1 %> add c1 %> is_zero) t2
-    | ((Inv, _) :: _), [Fin, _ as c1] -> List.filter Const.(extract_consts %> mul c1 %> add c1 %> is_zero) t1
-    | [], _ -> [one] | _, [] -> [one]
-  let diff_consts t1 t2 = match[@warning "-8"] Tuple2.mapn (List.map extract_consts) (t1, t2) with
-    | [Fin, _ as c1], [Fin, _ as c2] -> [uconst Const.(mul c2 (add one c1))]
-    | ((Inv, _) :: _), ((Inv, _) :: _) -> List.filter (fun c2 -> not (List.exists (eq c2) t1)) t2
-    | [Fin, _ as c1], ((Inv, _) :: _ as c2s) -> [uconst (List.fold_left union c1 c2s)]
-    | ((Inv, _) :: _), [Fin, _ as c1] -> List.filter Const.(extract_consts %> mul c1 %> is_zero %> not) t1
-    | [], _ -> [one] | _, [] -> t1
-  
-  let vars t = match uget t with
-    | Var _ -> [t]
-    | Expr t_ -> List.fold_left (fun acc (_, bases) -> 
-      List.fold_left (fun a v -> 
-        if mem v a then a
-        else v :: a) acc bases) [] t_
-  
-  let replace v t t0 = match uget t0 with
-    | Var _ when Uref.equal v t0 -> t
-    | Var _ -> v
-    | Expr e -> uexpr (List.map (Tuple2.map2 (List.map (fun v0 -> 
-      match uget v0 with
-      | Var _ when Uref.equal v0 t0 -> t
-      | Var _ -> v0
-      | Expr _ -> failwith "Non-normal array"))) e)
-  
-  let project vars t = match uget t with
-    | Var _ when mem t vars -> t
-    | Var _ -> one
-    | Expr e -> 
-      uexpr (List.map (Tuple2.map2 (List.filter (fun v -> mem v vars))) e)
-  
-  let minlvl v1 v2 = match[@warning "-8"] uget v1, uget v2 with
-    | Var (lvl1, _), Var (lvl2, _) -> if lvl2 > lvl1 then v2 else v1
-end
-
-module BGen = struct
+(* module BGen = struct
   module G = Gbool.Make(BGenAux)
   include G
   open Free
@@ -421,4 +332,4 @@ module BGen = struct
           uref (Expr (List.map Tuple2.(map1 (map2 (Dict.map reconstruct))) e))
       end |> uref in
     Cyclic.vmap (Tuple2.map1 reconstruct) ctx, reconstruct tau
-end
+end *)

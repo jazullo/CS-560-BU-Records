@@ -161,14 +161,16 @@ module Make(C : Constant) = struct
         Option.may (fun vs -> Hashtbl.add vs (getvar u') u') vars;
         uset u (Expr (simp (t2 @ mul (var u') (one @ t1))))
   
-  let rec unify ?(vars=None) r = unite ~sel:(curry @@ function
+  let rec unify ?vars r = unite ~sel:(curry @@ function
     | Var (l1, i1), Var (l2, _) -> 
       Option.may (fun vs -> Hashtbl.remove vs i1) vars;
       Var (min l1 l2, i1)
     | (Var (_, i1) as v, (Expr e as x) | (Expr e as x), (Var (_, i1) as v)) -> 
       List.(find_map_opt (snd %> find_opt (Uref.uget %> (=) v))) e |> (function
-        | Some u -> u |> var %> uexpr %> unify ~vars (uref x)
-        | None -> Option.may (fun vs -> Hashtbl.remove vs i1) vars); x
+        | None -> Option.may (fun vs -> Hashtbl.remove vs i1) vars  
+        | Some u -> u |> var %> uexpr %> match vars with 
+          | None -> unify (uref x)
+          | Some vars -> unify ~vars (uref x)); x
     | Expr e1 as x, (Expr e2 as y) -> 
       try solve ~vars (e1 @ e2); x with
       | Err -> raise @@ Common.UnifError (Printf.sprintf 
