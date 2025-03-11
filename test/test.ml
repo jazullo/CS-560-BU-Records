@@ -51,10 +51,9 @@ let%expect_test _ = g "{x : bool} (b0 + b1), {y : bool} (b0 + b1)";
   [%expect"{x : bool} b1, {y : bool} b1"]
 let%expect_test _ = g "{x : bool} (b0 + b1), {x : bool, y : bool} (b0 + b1)";
   [%expect"{x : bool} b1, {x : bool, y : bool} b1"]
-let%expect_test _ = g "b0 + b1, b0 b1";
-  [%expect"b0 + b1, b0 b1"]
+let%expect_test _ = g "b0 + b1, b0 b1"; [%expect"b0 + b1, b0 b1"]
 
-
+let%expect_test _ = g "b0 b1 + b1, {x : int}"; [%expect"b0, {x : int}"]
 
 (* factorization of polynomials *)
 (* let%expect_test _ = g "(b0 + b1 + !{}) b2 + (b0 + b1 + !{}) (b3 + b4 + !{}) b5"; [%expect""] *)

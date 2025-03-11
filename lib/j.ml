@@ -11,7 +11,7 @@ open Types.Unify
 open Types
 
 let fresh () = uref (MVar (!Common.level, unique ()))
-let bgen = if !Common.bgen then Gbool.many else Tuple2.make
+let bgen ctx t = if !Common.bgen then Gbool.many ctx t else t
 
 let err _sp msg unif_msg = 
   print_endline "Type Error.";
@@ -91,7 +91,7 @@ let rec infer ctx (_e, _sp, _t) = match _e with
   
   | Binding (s, e1, e2) -> 
     incr Common.level; infer ctx e1; decr Common.level; 
-    let ctx, t' = bgen ctx (_3 e1) in
+    let t' = bgen ctx (_3 e1) in
     let ctx' = Cyclic.insert s (t', Poly (bound t')) ctx in
     infer ctx' e2; 
     u "Unexpected type from let expression" _sp _t (_3 e2)
@@ -145,7 +145,7 @@ and process_pat ctx (_p, _sp, v) = match _p with
 let infer_defs ctx = List.fold_left (fun ctx' ((name, body), _, a) -> 
   let ctx'' = Cyclic.insert name (a, Mono) ctx' in
   infer ctx'' body;
-  let ctx'', t = bgen ctx'' (_3 body) in
+  let t = bgen ctx'' (_3 body) in
   a =? t;
   Cyclic.insert name (a, Poly Universe.empty) ctx''
 ) ctx
