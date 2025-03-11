@@ -162,9 +162,7 @@ let many ctx tau =
   let ctx_vars = 
     List.map (snd %> fst %> row_vars) (Cyclic.to_list ctx)
     |> List.fold_left Map.union Map.empty in
-  let ctx_types_reduced = Map.merge (fun _ o1 o2 -> match o1, o2 with
-    | (Some _ | None), Some _ | None, None -> None
-    | Some _ as o, None -> o) ctx_vars tau_vars in
+  let ctx_types_reduced = Map.filter (fun i _ -> Map.mem i tau_vars) ctx_vars in
   let to_list = Map.values %> List.of_enum in
   gen (to_list tau_vars) (to_list ctx_types_reduced) arr;
   let rec reconstruct t = match uget t with
