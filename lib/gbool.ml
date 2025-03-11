@@ -32,7 +32,7 @@ module B = struct
       Unify.(simplify e1; simplify e2); (e1, e2)
     | Var _ as v_ -> 
       if v_ = uget v then v, zero
-      else failwith "internal error: scrutinee variable absent from row type"
+      else zero, zero
 
   let eq x y = is_zero (add x y)
   let mem x = List.exists (eq x)

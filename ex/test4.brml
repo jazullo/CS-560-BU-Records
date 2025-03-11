@@ -1,0 +1,9 @@
+def f x y = 
+  let g z = 
+    let a = if true then z else x in
+    y in
+  x | y
+
+def g = f {a = 0}
+
+def main = 0
