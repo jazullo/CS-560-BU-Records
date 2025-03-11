@@ -171,12 +171,11 @@ module Make(C : Constant) = struct
     | Var (_, i), Expr _ -> del i vars; uset r1 (uget r2)
     | Expr e, Var (_, i) when contained i e -> go vars r1 (uexpr (var r2))
     | Expr _, Var (_, i) -> del i vars; uset r2 (uget r1)
-    | Expr e1 as x, (Expr e2 as y) -> 
+    | Expr e1, (Expr e2) -> 
       try solve ~vars (e1 @ e2) with
       | Err -> raise @@ Common.UnifError (Printf.sprintf 
         "Incompatible Set Types <%s> and <%s>."
-        (string_anf (uref x))
-        (string_anf (uref y)))
+        (string_anf r1) (string_anf r2))
   and go vars r = match vars with
     | Some vars -> unify ~vars r
     | None -> unify r
