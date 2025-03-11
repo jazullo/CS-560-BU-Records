@@ -117,12 +117,12 @@ let print_term_ctx ctx =
     printf "\n"
 
 let interpret = flags "interpret sources" "interpret" 'i'
-let phigen = flags "generalize types naively" "ngen" 'n'
+let bgen = flags "perform B-generalization" "bgen" 'b'
 
 let () = match P.parse_argv op with
   | [] | _ :: _ :: _ -> P.usage op ()
   | [fname] -> 
-    Common.bgen := not (O.get phigen);
+    Common.bgen := O.get bgen;
     let ast = parse (File.open_in fname) in
     let ctx = J.infer_defs Cyclic.empty ast in
     (* print_prog stdout ast; *)
