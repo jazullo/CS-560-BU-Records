@@ -111,7 +111,7 @@ let rec freeze t = match uget t with
   | MLit MInt -> FInt | MLit MBool -> FBool
   | MFun (i, o) -> FFun (freeze i, freeze o)
   | TRec r -> freeze_recty r
-and freeze_recty r = match uget r with
+and freeze_recty r = match Free.simplify (uget r) with
   | Var (_, i) -> FRec [(Inv, []), [i]]
   | Expr e -> 
     FRec (List.map Tuple2.(map (map Fun.id (Dict.to_list %> 
@@ -149,14 +149,15 @@ let many ctx tau =
         List.iter (fst %> snd %> Dict.values %> Enum.iter set_rows) e in
   set_rows tau;
   Cyclic.vmap (fst %> set_rows) ctx |> ignore;
-  let rec row_vars t = 
-    match uget t with
+  let rec row_vars t = match uget t with
     | S.MVar _ | MLit _ -> Map.empty
     | MFun (i, o) -> Map.union (row_vars i) (row_vars o)
     | TRec r -> match uget r with
       | Var (_, i) -> Map.singleton i r
-      | Expr e -> List.fold_left (fun a ((_, d), _) -> 
-        Dict.fold (fun _ -> row_vars %> Map.union) d a) Map.empty e in
+      | Expr e -> List.fold_left (fun a ((_, d), vs) -> 
+          let go_rec _ = row_vars %> Map.union in
+          let addvar ws v = Map.add (getvar v) v ws in
+          Dict.fold go_rec d (List.fold_left addvar a vs)) Map.empty e in
   let tau_vars = row_vars tau in
   let ctx_vars = 
     List.map (snd %> fst %> row_vars) (Cyclic.to_list ctx)
