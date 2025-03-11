@@ -71,22 +71,24 @@ open Uref
 
 let getvar = uget %> function[@warning "-8"] Free.Var (_, i) -> i
 
+let cc = ref (-1) let fs () = incr cc; !cc
 (* Main algorithm *)
 let gen dense sparse arr = 
   let rec go1 d1 s1 = match d1 with
     | [] -> () | v1 :: d2 -> 
       d2 @ s1 |> List.iter @@ fun v2 -> 
-        let v, p0 = B.minlvl v1 v2, Free.fresh () in
         let ps = Free.[fresh (); fresh (); fresh ()] in
-        let ht = Hashtbl.of_list (List.map (fun p -> getvar p, p) (p0 :: ps)) in
+        let ht = Hashtbl.of_list (List.map (fun p -> getvar p, p) ps) in
         begin try
           let a = arr |> Array.map @@ fun r -> 
+            let p0 = Free.fresh () in
+            Hashtbl.add ht (getvar p0) p0;
             let t1, t2 = B.bmatch v1 r in
             let t3, t4 = B.bmatch v2 t1 in
             let t5, t6 = B.bmatch v2 t2 in
             let u = B.mul p0 %> Free.unify ~vars:ht in
             List.iter2 u ps [t3; t4; t5];
-            B.(add (mul p0 v) t6) in
+            B.(add (mul p0 (B.minlvl v1 v2)) t6) in
           Hashtbl.iter (fun _ u -> uset u (uget B.zero)) ht;
           Array.blit a 0 arr 0 (Array.length a)
         with Common.UnifError _ -> () end;

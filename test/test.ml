@@ -47,8 +47,8 @@ let%expect_test _ = g "{x : bool} (b0 + b1), {x : bool} (b0 + b1)";
 (* multiple variables involving factorization of coefficients *)
 let%expect_test _ = g "{x : bool} (b0 + b1), {x : bool} (b0 + b1)";
   [%expect"{x : bool} b1, {x : bool} b1"]
-(* let%expect_test _ = g "{x : bool} (b0 + b1), {y : bool} (b0 + b1)";
-  [%expect"{x : bool} b1, {y : bool} b1"] *)
+let%expect_test _ = g "{x : bool} (b0 + b1), {y : bool} (b0 + b1)";
+  [%expect"{x : bool} b1, {y : bool} b1"]
 (* let%expect_test _ = g "{x : bool} (b0 + b1), {x : bool, y : bool} (b0 + b1)";
   [%expect"{x : bool} b1, {x : bool, y : bool} b1"] *)
 (* let%expect_test _ = g "b0 + b1, b0 b1";
