@@ -1,0 +1,8 @@
+def f w z = 
+  let a = w | {x = 0} in
+  let b = z | {y = 0} in
+  w | z
+
+def g = f {y = 0} {x = 0}
+
+def main = 0

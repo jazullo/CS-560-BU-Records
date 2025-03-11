@@ -1,0 +1,7 @@
+def f w z = (w | z).x
+
+def g w z = 
+  let y = f w z in
+  w | z
+
+def main = 0
