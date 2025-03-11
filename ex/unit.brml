@@ -1,0 +1,3 @@
+def f w = w | w
+
+def main = 0

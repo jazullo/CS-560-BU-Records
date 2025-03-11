@@ -1,0 +1,5 @@
+def f w z = 
+  let a = w | z in
+  if true then w else z
+
+def main = 0

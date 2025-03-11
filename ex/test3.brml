@@ -1,0 +1,5 @@
+def f w z = if true then w | z else {x = 0}
+def g w = f w {}
+def h w = f w {x = 0}
+
+def main = 0

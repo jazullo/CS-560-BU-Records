@@ -1,0 +1,5 @@
+def absurd w = absurd w
+
+def f z = absurd (fun w x -> if true then w | z else x)
+
+def main = 0
